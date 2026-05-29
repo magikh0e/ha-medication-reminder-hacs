@@ -1,0 +1,2 @@
+# Normalize line endings to LF. Shell scripts must be LF to run on Linux/WSL/HA.
+* text=auto eol=lf

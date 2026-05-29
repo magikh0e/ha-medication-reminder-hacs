@@ -3,9 +3,10 @@
     "step": {
       "user": {
         "title": "Add a patient",
-        "description": "Create a medication schedule for a pet or person. Add one patient at a time; you can add their doses next.",
+        "description": "Create a medication schedule for a pet or person. Choose who should be reminded; you can add their doses next.",
         "data": {
-          "patient": "Patient name"
+          "patient": "Patient name",
+          "notify": "Notify target (person or group)"
         }
       }
     },
@@ -19,7 +20,8 @@
         "title": "Manage doses",
         "menu_options": {
           "add_dose": "Add a dose",
-          "remove_dose": "Remove a dose"
+          "remove_dose": "Remove a dose",
+          "settings": "Change notify target"
         }
       },
       "add_dose": {
@@ -34,6 +36,13 @@
         "title": "Remove doses",
         "data": {
           "remove": "Doses to remove"
+        }
+      },
+      "settings": {
+        "title": "Notify target",
+        "description": "Who should receive this patient's medication reminders.",
+        "data": {
+          "notify": "Notify target (person or group)"
         }
       }
     }

@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Launch a dev Home Assistant instance with this integration loaded.
+set -e
+cd "$(dirname "$0")/.."
+
+CONFIG_DIR="${PWD}/config"
+
+# First run: create a default config.
+if [[ ! -f "${CONFIG_DIR}/configuration.yaml" ]]; then
+    mkdir -p "${CONFIG_DIR}"
+    hass --config "${CONFIG_DIR}" --script ensure_config
+fi
+
+# Make this integration visible to HA via custom_components.
+mkdir -p "${CONFIG_DIR}/custom_components"
+ln -sf "${PWD}/custom_components/medication_reminder" \
+       "${CONFIG_DIR}/custom_components/medication_reminder"
+
+# Turn on debug logging for the integration (once).
+if ! grep -q "custom_components.medication_reminder" "${CONFIG_DIR}/configuration.yaml"; then
+    cat >> "${CONFIG_DIR}/configuration.yaml" <<'YAML'
+
+logger:
+  default: info
+  logs:
+    custom_components.medication_reminder: debug
+YAML
+fi
+
+# Run Home Assistant (Ctrl+C to stop).
+hass --config "${CONFIG_DIR}" --debug

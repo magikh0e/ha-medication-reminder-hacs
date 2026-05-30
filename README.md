@@ -52,8 +52,8 @@ territory. A future version may move reminders into the integration itself.
 ### 2. Add patients and doses
 
 1. **Settings, Devices & Services, Add Integration, Medication Reminder.**
-2. Enter the patient name (e.g. a pet or person) and pick the **notify target** (the person or group to remind). One patient per entry; add the integration again for more patients.
-3. On the entry, click **Configure** to **Add a dose** (pick a time, type the medications). Repeat for each dose. **Remove a dose** or **Change notify target** there too.
+2. Enter the patient name (e.g. a pet or person), pick the **patient type** (Person / Dog / Cat / ..., which sets the icon), and the **notify target** (the person or group to remind). One patient per entry; add the integration again for more patients.
+3. On the entry, click **Configure** to **Add a dose** (pick a time, type the medications). Repeat for each dose. **Remove a dose** or open **Reminder settings** (type, notify target, reset time, nag window/interval) there too.
 
 Each dose appears as `switch.<patient>_<time>` with attributes `patient`,
 `dose_time`, `medications`, and `notify_service`.
@@ -101,7 +101,7 @@ sort:
 
 ## How marking works (the contract)
 
-- The integration publishes `switch.*` entities carrying `patient` / `dose_time` / `medications` / `notify_service` attributes, plus a per-patient `binary_sensor` that is on when all of that patient's doses are given today (with `total` / `given` / `remaining` / `pending` attributes).
+- The integration publishes `switch.*` entities carrying `patient` / `patient_type` / `dose_time` / `medications` / `notify_service` attributes, plus a per-patient `binary_sensor` (carrying the patient-type icon) that is on when all of that patient's doses are given today (with `total` / `given` / `remaining` / `pending` attributes).
 - The companion reminder automation iterates those switches and routes each reminder to its `notify_service` / `nag_minutes` / `nag_interval`, so adding a dose or changing a patient's settings in the UI needs **no** automation edits.
 - "Mark given" flips the switch on; the daily reset flips all off at the configured reset time.
 

@@ -2,15 +2,15 @@
 #
 # The integration creates a switch per dose (on = given today), handles the
 # daily reset, and stores each patient's settings (notify target, nag window,
-# nag interval). These automations do the reminders, nagging, and missed-dose
-# escalation by reading EVERY dose switch's attributes. Add a patient or dose in
-# the UI, or change a patient's settings, and these pick it up automatically; no
-# edits needed here.
+# nag interval, scheduled days). These automations do the reminders, nagging,
+# and missed-dose escalation by reading EVERY dose switch's attributes. Add a
+# patient or dose in the UI, or change a patient's settings, and these pick it
+# up automatically; no edits needed here.
 #
 # Cadence: reminders fire on a 5-minute tick (prompt first ping), re-nag every
 # patient's `nag_interval` minutes, and escalate once at the window-end
-# (`nag_minutes`). Each patient's reminders go to the notify target chosen in the
-# UI (state_attr notify_service); the defaults below are only fallbacks.
+# (`nag_minutes`). A dose is only acted on if today is one of its scheduled
+# `days`. Each patient's reminders go to the notify target chosen in the UI.
 
 - id: med_reminder
   alias: "Medication - Reminders & missed-dose escalation"
@@ -19,6 +19,7 @@
       minutes: "/5"
   variables:
     default_notify: caretakers
+    today: "{{ ['mon','tue','wed','thu','fri','sat','sun'][now().weekday()] }}"
   action:
     - repeat:
         for_each: >
@@ -33,15 +34,17 @@
               dtime: "{{ state_attr(ent, 'dose_time') }}"
               patient: "{{ state_attr(ent, 'patient') }}"
               meds: "{{ state_attr(ent, 'medications') }}"
+              days: "{{ state_attr(ent, 'days') or ['mon','tue','wed','thu','fri','sat','sun'] }}"
+              scheduled: "{{ today in days }}"
               notify_service: "{{ state_attr(ent, 'notify_service') or default_notify }}"
               nag_minutes: "{{ state_attr(ent, 'nag_minutes') | int(45) }}"
               nag_interval: "{{ state_attr(ent, 'nag_interval') | int(15) }}"
               mins_since: "{{ (now() - today_at(dtime)).total_seconds() / 60 }}"
               clock: "{{ as_timestamp(today_at(dtime)) | timestamp_custom('%-I:%M %p') }}"
           - choose:
-              # Reminder: prompt first ping, then about every nag_interval minutes
+              # Reminder: only if scheduled today, within the nag window, not given
               - conditions:
-                  - "{{ not given and mins_since >= 0 and mins_since < nag_minutes and (mins_since % nag_interval) < 5 }}"
+                  - "{{ scheduled and not given and mins_since >= 0 and mins_since < nag_minutes and (mins_since % nag_interval) < 5 }}"
                 sequence:
                   - action: "notify.{{ notify_service }}"
                     data:
@@ -52,9 +55,9 @@
                         actions:
                           - action: "MED_GIVEN_{{ oid }}"
                             title: "✅ Mark given"
-              # Missed: fires once at the first tick at/after the window-end
+              # Missed: scheduled today, past the window-end, fires once
               - conditions:
-                  - "{{ not given and mins_since >= nag_minutes and mins_since < nag_minutes + 5 }}"
+                  - "{{ scheduled and not given and mins_since >= nag_minutes and mins_since < nag_minutes + 5 }}"
                 sequence:
                   - action: "notify.{{ notify_service }}"
                     data:

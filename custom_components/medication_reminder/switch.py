@@ -22,10 +22,12 @@ from .const import (
     CONF_PATIENT_TYPE,
     CONF_RESET_TIME,
     CONF_TIME,
+    CONF_TIME_FORMAT,
     DEFAULT_NAG_INTERVAL,
     DEFAULT_NAG_MINUTES,
     DEFAULT_PATIENT_TYPE,
     DEFAULT_RESET_TIME,
+    DEFAULT_TIME_FORMAT,
     DOMAIN,
 )
 
@@ -41,10 +43,18 @@ async def async_setup_entry(
     notify_target: str = entry.options.get(CONF_NOTIFY, "")
     nag_minutes: int = entry.options.get(CONF_NAG_MINUTES, DEFAULT_NAG_MINUTES)
     nag_interval: int = entry.options.get(CONF_NAG_INTERVAL, DEFAULT_NAG_INTERVAL)
+    time_format: str = entry.options.get(CONF_TIME_FORMAT, DEFAULT_TIME_FORMAT)
     doses: list[dict[str, Any]] = entry.options.get(CONF_DOSES, [])
     entities = [
         MedicationDoseSwitch(
-            entry, patient, patient_type, notify_target, nag_minutes, nag_interval, dose
+            entry,
+            patient,
+            patient_type,
+            notify_target,
+            nag_minutes,
+            nag_interval,
+            time_format,
+            dose,
         )
         for dose in doses
     ]
@@ -83,6 +93,7 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
         notify_target: str,
         nag_minutes: int,
         nag_interval: int,
+        time_format: str,
         dose: dict[str, Any],
     ) -> None:
         self._patient = patient
@@ -90,9 +101,10 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
         self._notify = notify_target
         self._nag_minutes = nag_minutes
         self._nag_interval = nag_interval
+        self._time_format = time_format
         self._time = str(dose[CONF_TIME])[:5]  # 24h "HH:MM" (used by automations)
         self._meds = dose[CONF_MEDS]
-        # 12h display, with the medications inline: "Patient 2:00 PM (Meds)"
+        # Display time per the chosen format, with the medications inline.
         self._attr_name = f"{patient} {self._format_time(self._time)} ({self._meds})"
         self._attr_unique_id = (
             f"{entry.entry_id}_{slugify(self._time + '_' + self._meds)}"
@@ -104,9 +116,10 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
             "manufacturer": "Medication Reminder",
         }
 
-    @staticmethod
-    def _format_time(hhmm: str) -> str:
-        """Convert 24h 'HH:MM' to 12h 'H:MM AM/PM' for the entity name."""
+    def _format_time(self, hhmm: str) -> str:
+        """Format 24h 'HH:MM' per the patient's time_format setting."""
+        if self._time_format == "24h":
+            return hhmm
         try:
             hour_str, minute = hhmm.split(":")
             hour = int(hour_str)
@@ -127,6 +140,7 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
             "notify_service": self._notify,
             "nag_minutes": self._nag_minutes,
             "nag_interval": self._nag_interval,
+            "time_format": self._time_format,
         }
 
     async def async_added_to_hass(self) -> None:

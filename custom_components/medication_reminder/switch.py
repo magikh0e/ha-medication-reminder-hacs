@@ -64,7 +64,8 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
         self._notify = notify_target
         self._time = str(dose[CONF_TIME])[:5]  # 24h "HH:MM" (used by automations)
         self._meds = dose[CONF_MEDS]
-        self._attr_name = f"{patient} {self._format_time(self._time)}"  # 12h display
+        # 12h display, with the medications inline: "Patient 2:00 PM (Meds)"
+        self._attr_name = f"{patient} {self._format_time(self._time)} ({self._meds})"
         self._attr_unique_id = (
             f"{entry.entry_id}_{slugify(self._time + '_' + self._meds)}"
         )

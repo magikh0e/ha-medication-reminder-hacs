@@ -15,7 +15,7 @@ This is the UI-driven sibling of the YAML package at
 Prefer pure YAML? Use that one. Want point-and-click dose management with
 auto-created entities? Use this.
 
-![Medication Reminder dashboard](medication-reminder-dashboard.png?v=2)
+![Medication Reminder dashboard](dashboard.png)
 
 > ⚠️ **Alpha software.** This is new and not yet widely tested. Validate it on
 > your own Home Assistant before relying on it, and keep a backup reminder method

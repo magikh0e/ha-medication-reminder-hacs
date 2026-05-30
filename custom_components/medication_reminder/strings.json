@@ -27,10 +27,11 @@
       },
       "add_dose": {
         "title": "Add a dose",
-        "description": "Pick the time and list the medications given at it.",
+        "description": "Pick the time, list the medications, and choose which days of the week this dose applies to (all days = daily).",
         "data": {
           "time": "Time",
-          "meds": "Medications"
+          "meds": "Medications",
+          "days": "Days of the week"
         }
       },
       "remove_dose": {

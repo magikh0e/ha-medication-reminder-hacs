@@ -81,23 +81,17 @@ They send a reminder when a dose is due and not given, nag every 15 minutes for
 
 ### 4. Dashboard (optional)
 
-Any entities card works. Zero-maintenance version with
-[auto-entities](https://github.com/thomasloven/lovelace-auto-entities) (HACS):
+The bundled [`lovelace-card.yaml`](lovelace-card.yaml) is a day-of-week-aware
+dashboard with three parts:
 
-```yaml
-type: custom:auto-entities
-card:
-  type: entities
-  title: 💊 Medication
-filter:
-  include:
-    - entity_id: "switch.*"
-      attributes:
-        medications: "*"
-      secondary_info: last-changed
-sort:
-  method: friendly_name
-```
+1. a red/green status panel (from the `needs_attention` sensors),
+2. a summary of **today's** scheduled doses (given / still to give, with times),
+3. a per-patient card listing each patient's doses scheduled today.
+
+It needs the HACS [auto-entities](https://github.com/thomasloven/lovelace-auto-entities)
+card. Paste it as a manual card, then replace the example patient names and the
+`binary_sensor` entity_ids with your own. The standalone status panel is below if
+you only want that piece.
 
 ### Status panel (red/green, glanceable)
 

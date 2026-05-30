@@ -1,8 +1,9 @@
 """The Medication Reminder integration.
 
 One config entry per patient. Each entry creates a switch per dose (on = given
-today) and resets them daily. Reminders/notifications are handled by companion
-automations that read the dose switches (see companion-automations.yaml).
+today) and a binary sensor that is on when all of that patient's doses are
+given. Reminders/notifications are handled by companion automations that read
+the dose switches (see companion-automations.yaml).
 """
 
 from __future__ import annotations
@@ -11,7 +12,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-PLATFORMS: list[Platform] = [Platform.SWITCH]
+PLATFORMS: list[Platform] = [Platform.SWITCH, Platform.BINARY_SENSOR]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

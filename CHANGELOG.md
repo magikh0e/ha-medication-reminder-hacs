@@ -5,6 +5,10 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-05-30
+### Added
+- Patient type (Person, Dog, Cat, Bird, Rabbit, Other), chosen in the config flow and editable in Reminder settings. It sets the icon on the patient's "all doses given" sensor and is exposed as a `patient_type` attribute. Dose switches keep the pill icon.
+
 ## [0.4.0] - 2026-05-30
 ### Added
 - Per-patient `binary_sensor` that is on when all of that patient's doses are given today, with `total`, `given`, `remaining`, and `pending` attributes. Useful for automations and dashboards.

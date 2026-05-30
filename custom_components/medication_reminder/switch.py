@@ -62,9 +62,9 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
     ) -> None:
         self._patient = patient
         self._notify = notify_target
-        self._time = str(dose[CONF_TIME])[:5]
+        self._time = str(dose[CONF_TIME])[:5]  # 24h "HH:MM" (used by automations)
         self._meds = dose[CONF_MEDS]
-        self._attr_name = f"{patient} {self._time}"
+        self._attr_name = f"{patient} {self._format_time(self._time)}"  # 12h display
         self._attr_unique_id = (
             f"{entry.entry_id}_{slugify(self._time + '_' + self._meds)}"
         )
@@ -74,6 +74,18 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
             "name": patient,
             "manufacturer": "Medication Reminder",
         }
+
+    @staticmethod
+    def _format_time(hhmm: str) -> str:
+        """Convert 24h 'HH:MM' to 12h 'H:MM AM/PM' for the entity name."""
+        try:
+            hour_str, minute = hhmm.split(":")
+            hour = int(hour_str)
+            suffix = "AM" if hour < 12 else "PM"
+            hour12 = hour % 12 or 12
+            return f"{hour12}:{minute} {suffix}"
+        except (ValueError, AttributeError):
+            return hhmm
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

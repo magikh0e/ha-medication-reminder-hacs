@@ -5,6 +5,10 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-05-30
+### Added
+- Per-patient `binary_sensor` that is on when all of that patient's doses are given today, with `total`, `given`, `remaining`, and `pending` attributes. Useful for automations and dashboards.
+
 ## [0.3.0] - 2026-05-30
 ### Added
 - Per-patient reminder settings in the UI (Configure, Reminder settings): daily reset time, nag window, and re-nag interval. These are exposed as switch attributes (`nag_minutes`, `nag_interval`) that the companion automations read, so changes take effect with no YAML edits.

@@ -1,13 +1,15 @@
-# Medication Reminder - dashboard card.
+# Medication Reminder - dashboard cards.
 #
-# A summary (X/Y given today, what's still pending, and what's been given and
-# when) plus a card that auto-includes every dose switch the integration
-# creates. All times shown in 12-hour format. Add this as a manual/YAML card on
-# a dashboard.
+# Two layouts to choose from. Copy the one you want into a dashboard as a
+# manual card. Both need the HACS "auto-entities" card
+# (https://github.com/thomasloven/lovelace-auto-entities); the summary needs
+# nothing extra. All times are shown in 12-hour format.
 #
-# The auto-entities card needs the HACS frontend card "auto-entities"
-# (https://github.com/thomasloven/lovelace-auto-entities). No HACS? See the
-# plain-entities note at the bottom.
+# ===========================================================================
+# OPTION A (active below) - Simple: a summary plus one auto-entities list of
+# every dose. Zero maintenance: add a patient or dose and it appears. No
+# per-patient grouping. Best if you just want it to work with no editing.
+# ===========================================================================
 
 type: vertical-stack
 cards:
@@ -45,14 +47,50 @@ cards:
     sort:
       method: friendly_name
 
-# ---------------------------------------------------------------------------
-# No HACS? Replace the auto-entities card above with a plain entities card and
-# list your dose switches manually (find entity_ids in Developer Tools -> States):
+# ===========================================================================
+# OPTION B - Grouped per patient, with a dynamic icon header per patient (the
+# emoji comes from each patient's `patient_type`, set in the integration).
+# Reads nicer with multiple patients. Requires v0.5.0+. Replace the example
+# patient names ("Buddy", "Mittens") and the binary_sensor entity_ids with
+# yours - the `patient:` filter must match the switch attribute exactly.
 #
-#   - type: entities
-#     title: 💊 Medication
-#     show_header_toggle: false
-#     entities:
-#       - switch.kaupo_1_59_pm
-#       - switch.kali_1_59_pm
-# ---------------------------------------------------------------------------
+# type: vertical-stack
+# cards:
+#   - type: markdown
+#     content: |-
+#       {% set meds = states.switch | selectattr('attributes.medications','defined') | list %}
+#       {% set given = meds | selectattr('state','eq','on') | list %}
+#       ### 💊 Doses today: {{ given|length }}/{{ meds|length }} given
+#   - type: markdown
+#     content: >
+#       ## {{ {'dog':'🐕','cat':'🐈','person':'🧑','bird':'🐦','rabbit':'🐇','other':'🐾'}.get(state_attr('binary_sensor.buddy_all_doses_given','patient_type'),'💊') }} Buddy
+#   - type: custom:auto-entities
+#     card:
+#       type: entities
+#       show_header_toggle: false
+#     filter:
+#       include:
+#         - entity_id: "switch.*"
+#           attributes:
+#             patient: Buddy
+#             medications: "*"
+#     sort:
+#       method: attribute
+#       attribute: dose_time
+#   - type: markdown
+#     content: >
+#       ## {{ {'dog':'🐕','cat':'🐈','person':'🧑','bird':'🐦','rabbit':'🐇','other':'🐾'}.get(state_attr('binary_sensor.mittens_all_doses_given','patient_type'),'💊') }} Mittens
+#   - type: custom:auto-entities
+#     card:
+#       type: entities
+#       show_header_toggle: false
+#     filter:
+#       include:
+#         - entity_id: "switch.*"
+#           attributes:
+#             patient: Mittens
+#             medications: "*"
+#     sort:
+#       method: attribute
+#       attribute: dose_time
+# ===========================================================================

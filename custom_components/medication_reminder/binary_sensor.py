@@ -9,7 +9,13 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_PATIENT, DOMAIN
+from .const import (
+    CONF_PATIENT,
+    CONF_PATIENT_TYPE,
+    DEFAULT_PATIENT_TYPE,
+    DOMAIN,
+    PATIENT_ICONS,
+)
 
 
 async def async_setup_entry(
@@ -18,19 +24,24 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Create the per-patient 'all doses given' sensor."""
-    async_add_entities([AllDosesGivenBinarySensor(entry, entry.data[CONF_PATIENT])])
+    patient_type = entry.options.get(CONF_PATIENT_TYPE, DEFAULT_PATIENT_TYPE)
+    async_add_entities(
+        [AllDosesGivenBinarySensor(entry, entry.data[CONF_PATIENT], patient_type)]
+    )
 
 
 class AllDosesGivenBinarySensor(BinarySensorEntity):
     """On when every dose for this patient is marked given today."""
 
     _attr_should_poll = False
-    _attr_icon = "mdi:check-all"
 
-    def __init__(self, entry: ConfigEntry, patient: str) -> None:
+    def __init__(self, entry: ConfigEntry, patient: str, patient_type: str) -> None:
         self._patient = patient
+        self._patient_type = patient_type
         self._attr_name = f"{patient} all doses given"
         self._attr_unique_id = f"{entry.entry_id}_all_doses_given"
+        # The patient-level entity carries the patient icon (dog/person/etc.).
+        self._attr_icon = PATIENT_ICONS.get(patient_type, "mdi:check-all")
         self._attr_device_info = {
             "identifiers": {(DOMAIN, entry.entry_id)},
             "name": patient,
@@ -59,6 +70,7 @@ class AllDosesGivenBinarySensor(BinarySensorEntity):
         total = len(doses)
         given = sum(1 for s in doses if s.state == "on")
         return {
+            "patient_type": self._patient_type,
             "total": total,
             "given": given,
             "remaining": total - given,

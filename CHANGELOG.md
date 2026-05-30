@@ -5,6 +5,10 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-05-30
+### Added
+- Per-patient "needs attention" sensor (`binary_sensor`, device class `problem`): red when a dose is overdue (past its time by the nag window and still not given), green when all is well. It re-evaluates on a 60-second timer so it trips on elapsed time alone, with no interaction, and fails safe toward "problem" rather than a false "all clear". Drives a simple red/green status panel and any light, siren, or notification you wire to it.
+
 ## [0.5.0] - 2026-05-30
 ### Added
 - Patient type (Person, Dog, Cat, Bird, Rabbit, Other), chosen in the config flow and editable in Reminder settings. It sets the icon on the patient's "all doses given" sensor and is exposed as a `patient_type` attribute. Dose switches keep the pill icon.

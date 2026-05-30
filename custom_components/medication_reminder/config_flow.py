@@ -17,10 +17,12 @@ from .const import (
     CONF_NAG_MINUTES,
     CONF_NOTIFY,
     CONF_PATIENT,
+    CONF_PATIENT_TYPE,
     CONF_RESET_TIME,
     CONF_TIME,
     DEFAULT_NAG_INTERVAL,
     DEFAULT_NAG_MINUTES,
+    DEFAULT_PATIENT_TYPE,
     DEFAULT_RESET_TIME,
     DOMAIN,
 )
@@ -34,6 +36,23 @@ def _notify_selector(hass: HomeAssistant) -> selector.SelectSelector:
             options=services,
             mode=selector.SelectSelectorMode.DROPDOWN,
             custom_value=True,
+        )
+    )
+
+
+def _type_selector() -> selector.SelectSelector:
+    """Dropdown of patient types (drives the patient icon)."""
+    return selector.SelectSelector(
+        selector.SelectSelectorConfig(
+            options=[
+                {"value": "person", "label": "Person"},
+                {"value": "dog", "label": "Dog"},
+                {"value": "cat", "label": "Cat"},
+                {"value": "bird", "label": "Bird"},
+                {"value": "rabbit", "label": "Rabbit"},
+                {"value": "other", "label": "Other"},
+            ],
+            mode=selector.SelectSelectorMode.DROPDOWN,
         )
     )
 
@@ -59,7 +78,7 @@ class MedicationReminderConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Ask for the patient's name and who to notify."""
+        """Ask for the patient's name, type, and who to notify."""
         errors: dict[str, str] = {}
         if user_input is not None:
             patient = user_input[CONF_PATIENT].strip()
@@ -70,6 +89,7 @@ class MedicationReminderConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data={CONF_PATIENT: patient},
                 options={
                     CONF_DOSES: [],
+                    CONF_PATIENT_TYPE: user_input[CONF_PATIENT_TYPE],
                     CONF_NOTIFY: user_input[CONF_NOTIFY],
                     CONF_RESET_TIME: DEFAULT_RESET_TIME,
                     CONF_NAG_MINUTES: DEFAULT_NAG_MINUTES,
@@ -79,6 +99,9 @@ class MedicationReminderConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         schema = vol.Schema(
             {
                 vol.Required(CONF_PATIENT): str,
+                vol.Required(
+                    CONF_PATIENT_TYPE, default=DEFAULT_PATIENT_TYPE
+                ): _type_selector(),
                 vol.Required(CONF_NOTIFY): _notify_selector(self.hass),
             }
         )
@@ -154,9 +177,10 @@ class MedicationReminderOptionsFlow(config_entries.OptionsFlow):
     async def async_step_settings(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Notify target, daily reset time, and the nag window/interval."""
+        """Patient type, notify target, daily reset time, and nag window/interval."""
         if user_input is not None:
             options = dict(self._entry.options)
+            options[CONF_PATIENT_TYPE] = user_input[CONF_PATIENT_TYPE]
             options[CONF_NOTIFY] = user_input[CONF_NOTIFY]
             options[CONF_RESET_TIME] = str(user_input[CONF_RESET_TIME])
             options[CONF_NAG_MINUTES] = int(user_input[CONF_NAG_MINUTES])
@@ -165,6 +189,10 @@ class MedicationReminderOptionsFlow(config_entries.OptionsFlow):
         opts = self._entry.options
         schema = vol.Schema(
             {
+                vol.Required(
+                    CONF_PATIENT_TYPE,
+                    default=opts.get(CONF_PATIENT_TYPE, DEFAULT_PATIENT_TYPE),
+                ): _type_selector(),
                 vol.Required(
                     CONF_NOTIFY, default=opts.get(CONF_NOTIFY, "")
                 ): _notify_selector(self.hass),

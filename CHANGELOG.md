@@ -5,6 +5,10 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-05-30
+### Added
+- Day-of-week scheduling per dose. When adding a dose you can pick which days it applies to (Monday through Sunday); defaults to every day. A dose is only reminded, counted as pending, or flagged overdue on its scheduled days. Exposed as a `days` attribute, which the companion automations and the status sensors respect. Existing doses default to every day, so nothing changes for them.
+
 ## [0.7.0] - 2026-05-30
 ### Added
 - Time format option (12-hour or 24-hour) in Reminder settings. Dose entity names show the time in the chosen format (e.g. `2:00 PM` or `14:00`). Exposed as a `time_format` attribute. Defaults to 12-hour, so existing setups are unchanged.

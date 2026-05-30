@@ -13,6 +13,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.util import slugify
 
 from .const import (
+    CONF_DAYS,
     CONF_DOSES,
     CONF_MEDS,
     CONF_NAG_INTERVAL,
@@ -23,6 +24,7 @@ from .const import (
     CONF_RESET_TIME,
     CONF_TIME,
     CONF_TIME_FORMAT,
+    DEFAULT_DAYS,
     DEFAULT_NAG_INTERVAL,
     DEFAULT_NAG_MINUTES,
     DEFAULT_PATIENT_TYPE,
@@ -104,6 +106,8 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
         self._time_format = time_format
         self._time = str(dose[CONF_TIME])[:5]  # 24h "HH:MM" (used by automations)
         self._meds = dose[CONF_MEDS]
+        # Days of the week this dose applies to (default: every day).
+        self._days = dose.get(CONF_DAYS) or list(DEFAULT_DAYS)
         # Display time per the chosen format, with the medications inline.
         self._attr_name = f"{patient} {self._format_time(self._time)} ({self._meds})"
         self._attr_unique_id = (
@@ -137,6 +141,7 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
             "patient_type": self._patient_type,
             "dose_time": self._time,
             "medications": self._meds,
+            "days": self._days,
             "notify_service": self._notify,
             "nag_minutes": self._nag_minutes,
             "nag_interval": self._nag_interval,

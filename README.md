@@ -169,6 +169,7 @@ as switch attributes that the companion automations read.
 
 ## Roadmap
 
+- Day-of-week / weekly dose scheduling (e.g. a dose only on Mondays, or Mon/Wed/Fri).
 - Optional in-integration notifications/nagging (so YAML companions become optional).
 - HACS default-store submission once validated.
 

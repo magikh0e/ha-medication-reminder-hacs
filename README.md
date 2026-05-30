@@ -148,6 +148,8 @@ and which days it applies), not just today. Auto-discovers all patients, respect
 each one's 12h/24h setting, and shows "Daily" or the specific days. Native
 markdown card, no HACS needed:
 
+![Schedule overview](ScheduleOverview.png)
+
 ```yaml
 type: markdown
 content: |-

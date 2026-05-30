@@ -14,16 +14,3 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: home-assistant/actions/hassfest@master
-
-  hacs:
-    name: HACS
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: hacs/action@main
-        with:
-          category: integration
-          # "brands" requires registering the domain in home-assistant/brands,
-          # which is only needed for HACS default-store listing, not for custom
-          # repo installs. Ignored until we submit a brands PR.
-          ignore: brands

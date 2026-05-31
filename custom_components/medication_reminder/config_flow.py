@@ -20,6 +20,12 @@ from .const import (
     CONF_PATIENT,
     CONF_PATIENT_TYPE,
     CONF_RESET_TIME,
+    CONF_SUPPLIES,
+    CONF_SUPPLY_MED,
+    CONF_SUPPLY_PER_DOSE,
+    CONF_SUPPLY_REFILL_TO,
+    CONF_SUPPLY_THRESHOLD,
+    CONF_SUPPLY_UNITS,
     CONF_TIME,
     CONF_TIME_FORMAT,
     DEFAULT_DAYS,
@@ -27,6 +33,10 @@ from .const import (
     DEFAULT_NAG_MINUTES,
     DEFAULT_PATIENT_TYPE,
     DEFAULT_RESET_TIME,
+    DEFAULT_SUPPLY_PER_DOSE,
+    DEFAULT_SUPPLY_REFILL_TO,
+    DEFAULT_SUPPLY_THRESHOLD,
+    DEFAULT_SUPPLY_UNITS,
     DEFAULT_TIME_FORMAT,
     DOMAIN,
 )
@@ -106,6 +116,18 @@ def _minutes_selector(low: int, high: int) -> selector.NumberSelector:
     )
 
 
+def _count_selector() -> selector.NumberSelector:
+    """A whole-number box for supply counts (pills/doses on hand)."""
+    return selector.NumberSelector(
+        selector.NumberSelectorConfig(
+            min=0,
+            max=9999,
+            step=1,
+            mode=selector.NumberSelectorMode.BOX,
+        )
+    )
+
+
 class MedicationReminderConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Initial flow: one config entry per patient (pet or person)."""
 
@@ -165,7 +187,13 @@ class MedicationReminderOptionsFlow(config_entries.OptionsFlow):
     ) -> config_entries.ConfigFlowResult:
         return self.async_show_menu(
             step_id="init",
-            menu_options=["add_dose", "remove_dose", "settings"],
+            menu_options=[
+                "add_dose",
+                "remove_dose",
+                "add_supply",
+                "remove_supply",
+                "settings",
+            ],
         )
 
     async def async_step_add_dose(
@@ -212,6 +240,64 @@ class MedicationReminderOptionsFlow(config_entries.OptionsFlow):
             {vol.Optional("remove", default=[]): cv.multi_select(choices)}
         )
         return self.async_show_form(step_id="remove_dose", data_schema=schema)
+
+    async def async_step_add_supply(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Track supply for one medication: units on hand, per-dose, threshold."""
+        if user_input is not None:
+            options = dict(self._entry.options)
+            supplies = list(options.get(CONF_SUPPLIES, []))
+            supplies.append(
+                {
+                    CONF_SUPPLY_MED: user_input[CONF_SUPPLY_MED].strip(),
+                    CONF_SUPPLY_UNITS: int(user_input[CONF_SUPPLY_UNITS]),
+                    CONF_SUPPLY_PER_DOSE: int(user_input[CONF_SUPPLY_PER_DOSE]),
+                    CONF_SUPPLY_THRESHOLD: int(user_input[CONF_SUPPLY_THRESHOLD]),
+                    CONF_SUPPLY_REFILL_TO: int(user_input[CONF_SUPPLY_REFILL_TO]),
+                }
+            )
+            options[CONF_SUPPLIES] = supplies
+            return self.async_create_entry(title="", data=options)
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_SUPPLY_MED): selector.TextSelector(),
+                vol.Required(
+                    CONF_SUPPLY_UNITS, default=DEFAULT_SUPPLY_UNITS
+                ): _count_selector(),
+                vol.Required(
+                    CONF_SUPPLY_PER_DOSE, default=DEFAULT_SUPPLY_PER_DOSE
+                ): _count_selector(),
+                vol.Required(
+                    CONF_SUPPLY_THRESHOLD, default=DEFAULT_SUPPLY_THRESHOLD
+                ): _count_selector(),
+                vol.Required(
+                    CONF_SUPPLY_REFILL_TO, default=DEFAULT_SUPPLY_REFILL_TO
+                ): _count_selector(),
+            }
+        )
+        return self.async_show_form(step_id="add_supply", data_schema=schema)
+
+    async def async_step_remove_supply(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Pick tracked medications to stop tracking supply for."""
+        supplies = list(self._entry.options.get(CONF_SUPPLIES, []))
+        if user_input is not None:
+            remove = set(user_input.get("remove", []))
+            options = dict(self._entry.options)
+            options[CONF_SUPPLIES] = [
+                s for i, s in enumerate(supplies) if str(i) not in remove
+            ]
+            return self.async_create_entry(title="", data=options)
+        choices = {
+            str(i): f"{s[CONF_SUPPLY_MED]} ({s.get(CONF_SUPPLY_UNITS, 0)} on hand)"
+            for i, s in enumerate(supplies)
+        }
+        schema = vol.Schema(
+            {vol.Optional("remove", default=[]): cv.multi_select(choices)}
+        )
+        return self.async_show_form(step_id="remove_supply", data_schema=schema)
 
     async def async_step_settings(
         self, user_input: dict[str, Any] | None = None

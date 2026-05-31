@@ -31,6 +31,7 @@ auto-created entities? Use this.
 - ♻️ **Daily reset:** every dose flips back to "not given" at 00:01.
 - 💾 **Restart-safe:** dose state survives Home Assistant restarts.
 - 🔔 **Reminders via companion automations:** the included `companion-automations.yaml` reads the dose switches and sends actionable, nagging, missed-dose notifications (this v0.1 keeps notifications in YAML so you reuse proven logic).
+- 📦 **Supply & refill tracking (optional):** track how many doses of a medication you have on hand. It counts down as doses are marked given, shows doses left and an estimated run-out date, flags low stock red at your threshold, and can send a refill reminder.
 
 ## Why entities + YAML (not all-in-one, yet)
 
@@ -82,17 +83,27 @@ They send a reminder when a dose is due and not given, nag every 15 minutes for
 
 ### 4. Dashboard (optional)
 
-The bundled [`lovelace-card.yaml`](lovelace-card.yaml) is a day-of-week-aware
-dashboard with three parts:
+The bundled [`lovelace-card.yaml`](lovelace-card.yaml) is an auto-discovering,
+day-of-week-aware dashboard that needs **no editing**: it finds every patient and
+dose automatically, so adding, renaming, or removing a patient just updates it.
+Five parts:
 
 1. a red/green status panel (from the `needs_attention` sensors),
 2. a summary of **today's** scheduled doses (given / still to give, with times),
-3. a per-patient card listing each patient's doses scheduled today.
+3. one combined "Mark given" card with every dose due today (tap to mark),
+4. one combined supplies card (units on hand, shown only if you track supplies),
+5. a per-patient schedule overview (every dose, time, medications, and days).
 
-It needs the HACS [auto-entities](https://github.com/thomasloven/lovelace-auto-entities)
-card. Paste it as a manual card, then replace the example patient names and the
-`binary_sensor` entity_ids with your own. The standalone status panel is below if
-you only want that piece.
+It needs two HACS cards: [auto-entities](https://github.com/thomasloven/lovelace-auto-entities)
+(the auto-discovering lists) and [card-mod](https://github.com/thomasloven/lovelace-card-mod)
+(the pill icons are pinned blue so they stay out of the red/yellow/green status
+colours; without card-mod the pills fall back to amber). Paste it as a manual
+card, no names or entity_ids to change. The standalone status panel is below if
+you only want that piece, and it needs no HACS cards at all.
+
+![Medication Reminder dashboard layouts](dashboardupdates.png)
+
+*The auto-discovering layout, single-column and the optional two-column variant.*
 
 ### Status panel (red/green, glanceable)
 
@@ -189,11 +200,31 @@ Each patient has its own **Configure, Reminder settings** with:
 The reset time is applied by the integration; the nag window/interval are exposed
 as switch attributes that the companion automations read.
 
+## Supply & refill tracking
+
+Optionally track how much of each medication you have on hand. In **Configure,
+Track a medication supply**, set the medication name (exactly as it appears in the
+dose), units on hand, units consumed per dose, a low-stock threshold, and a refill
+amount. Each tracked medication then gets:
+
+- `number.<patient>_<med>_supply` - units on hand, settable. It **decrements when
+  a dose containing that medication is marked given** (once per dose per day,
+  restart-safe, and never on the daily reset). Attributes include `doses_left` and
+  `est_runout_date`, computed from the schedule. Adjust it any time to correct a
+  miscount or to refill.
+- `binary_sensor.<patient>_supplies_low` (device class `problem`) - **red when any
+  of that patient's supplies reaches its threshold**, with a `low` list of which
+  medications are short.
+
+A medication shared across several doses (e.g. one given morning and night) draws
+from a single pool; dose `meds` strings are split on `& , + /` so each medication
+is tracked individually. The companion `med_supply_low` automation sends a
+once-a-day refill reminder to the patient's notify target for anything low.
+
 ## Roadmap
 
 - Optional in-integration notifications/nagging (so YAML companions become optional).
 - HACS default-store submission once validated.
-- **Supply & refill tracking**: per-medication "doses remaining" that decrements as doses are marked given, a low-stock status (red, like the attention panel) at a configurable threshold, an estimated run-out date computed from the schedule, and an optional refill reminder. (Idea from community member Tadies, who built it on their dashboard with counter helpers.)
 
 ## Acknowledgements
 
@@ -201,6 +232,10 @@ The red/green "all OK / attention needed" status panel, the flashing alert, and
 the aggregate-status idea were suggested by Home Assistant Community user
 **IOT7712**. Thanks for the thoughtful feature requests, especially the focus on
 a reliable, glanceable, fail-safe indicator for care settings.
+
+**Supply & refill tracking** was inspired by Home Assistant Community user
+**Tadies**, who built a pill counter on their dashboard with counter helpers.
+Thanks for sharing it.
 
 ## License
 

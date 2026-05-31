@@ -22,6 +22,8 @@
         "menu_options": {
           "add_dose": "Add a dose",
           "remove_dose": "Remove a dose",
+          "add_supply": "Track a medication supply",
+          "remove_supply": "Remove a tracked supply",
           "settings": "Reminder settings"
         }
       },
@@ -38,6 +40,23 @@
         "title": "Remove doses",
         "data": {
           "remove": "Doses to remove"
+        }
+      },
+      "add_supply": {
+        "title": "Track a medication supply",
+        "description": "Count how much of a medication is on hand. It decrements each time a dose containing this medication is marked given, flags low at your threshold, and estimates a run-out date from the schedule. Use the medication name exactly as it appears in the dose (e.g. Keppra).",
+        "data": {
+          "supply_med": "Medication name",
+          "supply_units": "Units on hand now",
+          "supply_per_dose": "Units consumed per dose",
+          "supply_threshold": "Low-stock threshold",
+          "supply_refill_to": "Refill amount (a full supply)"
+        }
+      },
+      "remove_supply": {
+        "title": "Remove tracked supplies",
+        "data": {
+          "remove": "Supplies to stop tracking"
         }
       },
       "settings": {

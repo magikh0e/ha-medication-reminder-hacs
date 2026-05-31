@@ -5,6 +5,10 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-05-31
+### Added
+- Supply and refill tracking, per medication. In Configure you can now "Track a medication supply" with the units on hand, units consumed per dose, a low-stock threshold, and a refill amount. Each tracked medication gets a settable `number` entity that decrements when a dose containing that medication is marked given today (once per dose per day, restart-safe, and never on the daily reset). It exposes `doses_left` and an `est_runout_date` computed from the schedule. A per-patient "supplies low" `binary_sensor` (device class `problem`) goes red when any supply reaches its threshold, and a new companion automation sends a refill reminder. Idea from Home Assistant Community member Tadies, who built it on a dashboard with counter helpers.
+
 ## [0.8.0] - 2026-05-30
 ### Added
 - Day-of-week scheduling per dose. When adding a dose you can pick which days it applies to (Monday through Sunday); defaults to every day. A dose is only reminded, counted as pending, or flagged overdue on its scheduled days. Exposed as a `days` attribute, which the companion automations and the status sensors respect. Existing doses default to every day, so nothing changes for them.

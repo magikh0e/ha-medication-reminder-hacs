@@ -100,3 +100,37 @@
         data:
           tag: "med_missed_{{ oid }}"
   mode: parallel
+
+# Low-supply refill reminder. Fires once a day and pings the patient's notify
+# target for any medication whose supply has reached its low threshold. Reads
+# the per-patient "supplies low" binary sensors created when you track a supply,
+# so it picks up new medications automatically; no edits needed here. Change the
+# `at:` time to suit, or add more times.
+- id: med_supply_low
+  alias: "Medication - Low supply refill reminder"
+  trigger:
+    - platform: time
+      at: "09:00:00"
+  variables:
+    default_notify: caretakers
+  action:
+    - repeat:
+        for_each: >
+          {{ states.binary_sensor
+             | selectattr('attributes.low_count', 'defined')
+             | selectattr('state', 'eq', 'on')
+             | map(attribute='entity_id') | list }}
+        sequence:
+          - variables:
+              ent: "{{ repeat.item }}"
+              oid: "{{ ent.split('.')[1] }}"
+              patient: "{{ state_attr(ent, 'patient') }}"
+              low: "{{ (state_attr(ent, 'low') or []) | join(', ') }}"
+              notify_service: "{{ state_attr(ent, 'notify_service') or default_notify }}"
+          - action: "notify.{{ notify_service }}"
+            data:
+              title: "💊 Refill soon: {{ patient }}"
+              message: "Low medication supply for {{ patient }}: {{ low }}."
+              data:
+                tag: "med_supply_{{ oid }}"
+  mode: single

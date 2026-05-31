@@ -22,8 +22,10 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_interval
 
 from .const import (
+    CONF_NOTIFY,
     CONF_PATIENT,
     CONF_PATIENT_TYPE,
+    CONF_SUPPLIES,
     DEFAULT_PATIENT_TYPE,
     DOMAIN,
     PATIENT_ICONS,
@@ -42,12 +44,15 @@ async def async_setup_entry(
     """Create the per-patient status sensors."""
     patient = entry.data[CONF_PATIENT]
     patient_type = entry.options.get(CONF_PATIENT_TYPE, DEFAULT_PATIENT_TYPE)
-    async_add_entities(
-        [
-            AllDosesGivenBinarySensor(entry, patient, patient_type),
-            NeedsAttentionBinarySensor(entry, patient),
-        ]
-    )
+    entities = [
+        AllDosesGivenBinarySensor(entry, patient, patient_type),
+        NeedsAttentionBinarySensor(entry, patient),
+    ]
+    # Only expose the supply-low sensor when supplies are configured.
+    if entry.options.get(CONF_SUPPLIES):
+        notify_target = entry.options.get(CONF_NOTIFY, "")
+        entities.append(SuppliesLowBinarySensor(entry, patient, notify_target))
+    async_add_entities(entities)
 
 
 class _DoseLookupMixin:
@@ -204,3 +209,91 @@ class NeedsAttentionBinarySensor(_DoseLookupMixin, BinarySensorEntity):
     @callback
     def _handle_interval(self, _now) -> None:
         self.async_write_ha_state()
+
+
+class SuppliesLowBinarySensor(BinarySensorEntity):
+    """Problem sensor: on (red) when any of this patient's supplies is low.
+
+    Aggregates the per-medication supply numbers (created by the number
+    platform). A supply is "low" when its value is at or below its threshold.
+    """
+
+    _attr_should_poll = False
+    _attr_device_class = BinarySensorDeviceClass.PROBLEM
+
+    def __init__(
+        self, entry: ConfigEntry, patient: str, notify_target: str
+    ) -> None:
+        self._patient = patient
+        self._notify = notify_target
+        self._attr_name = f"{patient} supplies low"
+        self._attr_unique_id = f"{entry.entry_id}_supplies_low"
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, entry.entry_id)},
+            "name": patient,
+            "manufacturer": "Medication Reminder",
+        }
+
+    def _supplies(self) -> list:
+        """This patient's supply number entities."""
+        return [
+            s
+            for s in self.hass.states.async_all("number")
+            if s.attributes.get("patient") == self._patient
+            and s.attributes.get("medication") is not None
+        ]
+
+    def _low(self) -> list:
+        """Supplies at or below their threshold."""
+        low = []
+        for s in self._supplies():
+            threshold = s.attributes.get("threshold")
+            if threshold is None:
+                continue
+            try:
+                if float(s.state) <= float(threshold):
+                    low.append(s)
+            except (ValueError, TypeError):
+                continue
+        return low
+
+    @property
+    def is_on(self) -> bool:
+        return bool(self._low())
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        low = self._low()
+
+        def _left(state) -> str:
+            try:
+                return str(int(float(state.state)))
+            except (ValueError, TypeError):
+                return state.state
+
+        return {
+            "patient": self._patient,
+            "notify_service": self._notify,
+            "low_count": len(low),
+            "low": [
+                f"{s.attributes.get('medication')}: {_left(s)} left" for s in low
+            ],
+        }
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+
+        @callback
+        def _on_state_changed(event: Event) -> None:
+            if not event.data.get("entity_id", "").startswith("number."):
+                return
+            new = event.data.get("new_state")
+            if new is None or (
+                new.attributes.get("patient") == self._patient
+                and new.attributes.get("medication") is not None
+            ):
+                self.async_write_ha_state()
+
+        self.async_on_remove(
+            self.hass.bus.async_listen("state_changed", _on_state_changed)
+        )

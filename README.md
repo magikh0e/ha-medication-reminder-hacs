@@ -293,6 +293,7 @@ once-a-day refill reminder to the patient's notify target for anything low.
 - Optional in-integration notifications/nagging (so YAML companions become optional).
 - HACS default-store submission once validated.
 - Over-dose guard: a minimum interval between doses and a max-per-day cap, warning before a dose is marked given too soon or too often. An early-dose warning (a dose given before its scheduled time) shipped in 0.10.0 as a first step; the interval and daily cap remain. (Idea from community member IOT7712.)
+- More schedule types beyond day-of-week: every-N-days (every other day, every third day), day-of-month / monthly, and on/off cycles. Weekly already works by selecting a single weekday; this would add interval- and date-based schedules with a start anchor and a computed `scheduled_today` attribute the sensors, automations, and dashboard can share. (Suggested by a community member.)
 
 ## Acknowledgements
 

@@ -134,3 +134,80 @@
               data:
                 tag: "med_supply_{{ oid }}"
   mode: single
+
+# Early-dose warning. Listens for the integration's `medication_reminder_dose_given`
+# event (fired when a dose is marked given) and warns if it was given well before
+# its scheduled time. A soft over-dose guard: it does NOT block. The warning has
+# two action buttons (Companion app): "undo" un-marks the dose if it was a
+# mistake, "intended" dismisses. Set early_grace_minutes to 0 to warn on any early
+# marking.
+- id: med_early_given
+  alias: "Medication - Early dose warning"
+  trigger:
+    - platform: event
+      event_type: medication_reminder_dose_given
+      id: early_check
+    - platform: event
+      event_type: mobile_app_notification_action
+      id: button
+  variables:
+    default_notify: caretakers
+    early_grace_minutes: 30
+  action:
+    - choose:
+        # A dose was marked given early -> actionable warning.
+        - conditions:
+            - "{{ trigger.id == 'early_check' }}"
+            - "{{ trigger.event.data.scheduled_today }}"
+            - "{{ trigger.event.data.minutes_early is not none and trigger.event.data.minutes_early >= early_grace_minutes }}"
+          sequence:
+            - variables:
+                oid: "{{ trigger.event.data.entity_id.split('.')[1] }}"
+                patient: "{{ trigger.event.data.patient }}"
+                meds: "{{ trigger.event.data.medications }}"
+                mins_early: "{{ trigger.event.data.minutes_early }}"
+                notify_service: "{{ trigger.event.data.notify_service or default_notify }}"
+                clock: "{{ as_timestamp(today_at(trigger.event.data.dose_time)) | timestamp_custom('%-I:%M %p') }}"
+            - action: "notify.{{ notify_service }}"
+              data:
+                title: "⚠️ Given early: {{ patient }}"
+                message: "{{ patient }}'s {{ clock }} dose ({{ meds }}) was marked given {{ mins_early }} min early. Was that on purpose?"
+                data:
+                  tag: "med_early_{{ oid }}"
+                  actions:
+                    - action: "MED_UNDO_{{ oid }}"
+                      title: "↩️ No, undo it"
+                    - action: "MED_KEEP_{{ oid }}"
+                      title: "✅ Yes, intended"
+        # "Undo" tapped -> un-mark the dose and clear the warning.
+        - conditions:
+            - "{{ trigger.id == 'button' }}"
+            - "{{ trigger.event.data.action.startswith('MED_UNDO_') }}"
+          sequence:
+            - variables:
+                oid: "{{ trigger.event.data.action | replace('MED_UNDO_', '') }}"
+                ent: "switch.{{ oid }}"
+                notify_service: "{{ state_attr(ent, 'notify_service') or default_notify }}"
+            - action: switch.turn_off
+              target:
+                entity_id: "{{ ent }}"
+            - action: "notify.{{ notify_service }}"
+              data:
+                message: "clear_notification"
+                data:
+                  tag: "med_early_{{ oid }}"
+        # "Intended" tapped -> just clear the warning.
+        - conditions:
+            - "{{ trigger.id == 'button' }}"
+            - "{{ trigger.event.data.action.startswith('MED_KEEP_') }}"
+          sequence:
+            - variables:
+                oid: "{{ trigger.event.data.action | replace('MED_KEEP_', '') }}"
+                ent: "switch.{{ oid }}"
+                notify_service: "{{ state_attr(ent, 'notify_service') or default_notify }}"
+            - action: "notify.{{ notify_service }}"
+              data:
+                message: "clear_notification"
+                data:
+                  tag: "med_early_{{ oid }}"
+  mode: parallel

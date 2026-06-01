@@ -9,8 +9,9 @@ Decrement rules (deliberately simple and safe):
   write on restart (old state is None) never counts.
 - Only for doses scheduled today that include this medication.
 - Once per dose per calendar day, so toggling a dose off and on again does not
-  double-count. Un-toggling does not add stock back; correct that with the
-  number itself (it is settable).
+  double-count. Un-marking a given dose (turning the switch off) restores the
+  per-dose amount via the dose-undone event, including the early-dose "undo"
+  button; the daily reset does not restore, since the dose was actually given.
 """
 
 from __future__ import annotations
@@ -39,6 +40,7 @@ from .const import (
     DEFAULT_SUPPLY_THRESHOLD,
     DEFAULT_SUPPLY_UNITS,
     DOMAIN,
+    EVENT_DOSE_UNDONE,
     WEEKDAYS,
     meds_contains,
 )
@@ -159,6 +161,23 @@ class MedicationSupplyNumber(NumberEntity, RestoreEntity):
         self.async_on_remove(
             self.hass.bus.async_listen("state_changed", self._on_state_changed)
         )
+        self.async_on_remove(
+            self.hass.bus.async_listen(EVENT_DOSE_UNDONE, self._on_dose_undone)
+        )
+
+    @callback
+    def _on_dose_undone(self, event: Event) -> None:
+        """Restore the per-dose amount when a dose this supply counted today is
+        un-marked. Only restores if this supply actually decremented for that
+        dose today; the daily reset does not fire this event."""
+        entity_id = event.data.get("entity_id")
+        date_str = dt_util.now().date().isoformat()
+        if self._consumed.get(entity_id) == date_str:
+            del self._consumed[entity_id]
+            self._value = min(
+                self._attr_native_max_value, self._value + self._per_dose
+            )
+            self.async_write_ha_state()
 
     @callback
     def _on_state_changed(self, event: Event) -> None:

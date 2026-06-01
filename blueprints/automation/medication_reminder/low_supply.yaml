@@ -1,0 +1,49 @@
+blueprint:
+  name: Medication Reminder - low supply refill reminder
+  description: >
+    Once a day, notifies for any medication whose supply has reached its low
+    threshold. Auto-discovers the per-patient "supplies low" sensors created by
+    the integration. Optional; only useful if you track supplies.
+  domain: automation
+  author: magikh0e
+  source_url: https://github.com/magikh0e/ha-medication-reminder-hacs/blob/main/blueprints/automation/medication_reminder/low_supply.yaml
+  input:
+    fallback_notify:
+      name: Fallback notify target
+      description: Notify service used when a patient has no target set.
+      default: caretakers
+      selector:
+        text:
+    check_time:
+      name: Daily check time
+      description: When to send the daily refill reminder.
+      default: "09:00:00"
+      selector:
+        time:
+
+trigger:
+  - platform: time
+    at: !input check_time
+variables:
+  default_notify: !input fallback_notify
+action:
+  - repeat:
+      for_each: >
+        {{ states.binary_sensor
+           | selectattr('attributes.low_count', 'defined')
+           | selectattr('state', 'eq', 'on')
+           | map(attribute='entity_id') | list }}
+      sequence:
+        - variables:
+            ent: "{{ repeat.item }}"
+            oid: "{{ ent.split('.')[1] }}"
+            patient: "{{ state_attr(ent, 'patient') }}"
+            low: "{{ (state_attr(ent, 'low') or []) | join(', ') }}"
+            notify_service: "{{ state_attr(ent, 'notify_service') or default_notify }}"
+        - action: "notify.{{ notify_service }}"
+          data:
+            title: "💊 Refill soon: {{ patient }}"
+            message: "Low medication supply for {{ patient }}: {{ low }}."
+            data:
+              tag: "med_supply_{{ oid }}"
+mode: single

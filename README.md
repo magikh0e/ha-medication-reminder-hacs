@@ -41,6 +41,7 @@ auto-created entities? Use this.
 - 💾 **Restart-safe:** dose state survives Home Assistant restarts.
 - 🔔 **Reminders via companion automations:** the included `companion-automations.yaml` reads the dose switches and sends actionable, nagging, missed-dose notifications (this v0.1 keeps notifications in YAML so you reuse proven logic).
 - 📦 **Supply & refill tracking (optional):** track how many doses of a medication you have on hand. It counts down as doses are marked given, shows doses left and an estimated run-out date, flags low stock red at your threshold, and can send a refill reminder.
+- ⏰ **Early-dose warning (optional):** if a dose is marked given well before its scheduled time, a companion automation warns the caretaker, with an "undo" button to un-mark it if it was a mistake. A soft over-dose guard that flags likely slips without blocking you.
 
 ## Why entities + YAML (not all-in-one, yet)
 
@@ -69,10 +70,29 @@ territory. A future version may move reminders into the integration itself.
 Each dose appears as `switch.<patient>_<time>` with attributes `patient`,
 `dose_time`, `medications`, and `notify_service`.
 
-### 3. Add the companion automations
+### 3. Add the reminder automations
 
-1. Copy the two automations from [`companion-automations.yaml`](companion-automations.yaml) into your `automations.yaml`.
-2. Reload automations.
+The integration creates the entities; the reminders, nagging, missed-dose
+escalation, refill reminders, and early-dose warning are driven by automations.
+Pick one of two ways to add them:
+
+**Blueprints (recommended), one-click import and easy updates.** In **Settings,
+Automations & Scenes, Blueprints, Import Blueprint**, paste each URL you want,
+then create an automation from it. To update later, re-import the blueprint and
+the automations created from it pick up the change automatically.
+
+- Reminders and missed-dose escalation (core):
+  `https://github.com/magikh0e/ha-medication-reminder-hacs/blob/main/blueprints/automation/medication_reminder/medication_reminders.yaml`
+- Mark given from notification (core, pairs with the above):
+  `https://github.com/magikh0e/ha-medication-reminder-hacs/blob/main/blueprints/automation/medication_reminder/mark_given.yaml`
+- Early-dose warning (optional):
+  `https://github.com/magikh0e/ha-medication-reminder-hacs/blob/main/blueprints/automation/medication_reminder/early_dose.yaml`
+- Low-supply refill reminder (optional):
+  `https://github.com/magikh0e/ha-medication-reminder-hacs/blob/main/blueprints/automation/medication_reminder/low_supply.yaml`
+
+**Or copy the YAML.** Paste the automations from
+[`companion-automations.yaml`](companion-automations.yaml) into your
+`automations.yaml` and reload; re-paste to update.
 
 Each patient's reminders go to the **notify target you chose in the UI** (read
 from the switch's `notify_service` attribute). The `default_notify` value in the
@@ -195,6 +215,7 @@ content: |-
   - `binary_sensor.<patient>_needs_attention` (device class `problem`) - **red when a dose is overdue** (past its time by the nag window and still not given), green when all is well. It re-evaluates on a 60-second timer so it trips on elapsed time alone, and fails safe toward "problem". Attributes: `overdue` / `overdue_count`.
 - The companion reminder automation iterates those switches and routes each reminder to its `notify_service` / `nag_minutes` / `nag_interval`, so adding a dose or changing a patient's settings in the UI needs **no** automation edits.
 - "Mark given" flips the switch on; the daily reset flips all off at the configured reset time.
+- When a dose is marked given, the switch fires a `medication_reminder_dose_given` event (with `patient`, `dose_time`, `medications`, `scheduled_today`, `minutes_early`, `notify_service`), so companion automations can react cleanly. The bundled `med_early_given` automation uses it to warn when a dose is marked given well before its scheduled time, with an "undo" button that turns the dose back off. Un-marking a dose fires `medication_reminder_dose_undone`, which restores that dose's supply count.
 
 ## Settings (per patient)
 
@@ -219,8 +240,9 @@ amount. Each tracked medication then gets:
 - `number.<patient>_<med>_supply` - units on hand, settable. It **decrements when
   a dose containing that medication is marked given** (once per dose per day,
   restart-safe, and never on the daily reset). Attributes include `doses_left` and
-  `est_runout_date`, computed from the schedule. Adjust it any time to correct a
-  miscount or to refill.
+  `est_runout_date`, computed from the schedule. Un-marking a dose (the early-dose
+  "undo" or a manual toggle-off) adds the units back. Adjust it any time to
+  correct a miscount or to refill.
 - `binary_sensor.<patient>_supplies_low` (device class `problem`) - **red when any
   of that patient's supplies reaches its threshold**, with a `low` list of which
   medications are short.
@@ -234,7 +256,7 @@ once-a-day refill reminder to the patient's notify target for anything low.
 
 - Optional in-integration notifications/nagging (so YAML companions become optional).
 - HACS default-store submission once validated.
-- Over-dose guard: an optional minimum interval between doses and a max-per-day cap, warning before a dose is marked given too soon or too often. (Idea from community member IOT7712.)
+- Over-dose guard: a minimum interval between doses and a max-per-day cap, warning before a dose is marked given too soon or too often. An early-dose warning (a dose given before its scheduled time) shipped in 0.10.0 as a first step; the interval and daily cap remain. (Idea from community member IOT7712.)
 
 ## Acknowledgements
 

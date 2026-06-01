@@ -1,0 +1,100 @@
+blueprint:
+  name: Medication Reminder - early dose warning
+  description: >
+    Warns when a dose is marked given well before its scheduled time, a soft
+    over-dose guard. The warning offers two buttons: "undo" turns the dose back
+    off (un-marks it) if it was a mistake, "intended" just dismisses. Listens for
+    the integration's medication_reminder_dose_given event. It warns rather than
+    blocks. The buttons need the Home Assistant Companion app. Optional.
+  domain: automation
+  author: magikh0e
+  source_url: https://github.com/magikh0e/ha-medication-reminder-hacs/blob/main/blueprints/automation/medication_reminder/early_dose.yaml
+  input:
+    fallback_notify:
+      name: Fallback notify target
+      description: Notify service used when a patient has no target set.
+      default: caretakers
+      selector:
+        text:
+    grace_minutes:
+      name: Early grace (minutes)
+      description: >
+        Warn only if a dose is marked given at least this many minutes before its
+        scheduled time. Set to 0 to warn on any early marking.
+      default: 30
+      selector:
+        number:
+          min: 0
+          max: 240
+          step: 5
+          unit_of_measurement: min
+          mode: box
+
+trigger:
+  - platform: event
+    event_type: medication_reminder_dose_given
+    id: early_check
+  - platform: event
+    event_type: mobile_app_notification_action
+    id: button
+variables:
+  default_notify: !input fallback_notify
+  early_grace_minutes: !input grace_minutes
+action:
+  - choose:
+      # 1. A dose was marked given early -> actionable warning.
+      - conditions:
+          - "{{ trigger.id == 'early_check' }}"
+          - "{{ trigger.event.data.scheduled_today }}"
+          - "{{ trigger.event.data.minutes_early is not none and trigger.event.data.minutes_early >= early_grace_minutes }}"
+        sequence:
+          - variables:
+              oid: "{{ trigger.event.data.entity_id.split('.')[1] }}"
+              patient: "{{ trigger.event.data.patient }}"
+              meds: "{{ trigger.event.data.medications }}"
+              mins_early: "{{ trigger.event.data.minutes_early }}"
+              notify_service: "{{ trigger.event.data.notify_service or default_notify }}"
+              clock: "{{ as_timestamp(today_at(trigger.event.data.dose_time)) | timestamp_custom('%-I:%M %p') }}"
+          - action: "notify.{{ notify_service }}"
+            data:
+              title: "⚠️ Given early: {{ patient }}"
+              message: "{{ patient }}'s {{ clock }} dose ({{ meds }}) was marked given {{ mins_early }} min early. Was that on purpose?"
+              data:
+                tag: "med_early_{{ oid }}"
+                actions:
+                  - action: "MED_UNDO_{{ oid }}"
+                    title: "↩️ No, undo it"
+                  - action: "MED_KEEP_{{ oid }}"
+                    title: "✅ Yes, intended"
+      # 2. "Undo" tapped -> un-mark the dose and clear the warning.
+      - conditions:
+          - "{{ trigger.id == 'button' }}"
+          - "{{ trigger.event.data.action.startswith('MED_UNDO_') }}"
+        sequence:
+          - variables:
+              oid: "{{ trigger.event.data.action | replace('MED_UNDO_', '') }}"
+              ent: "switch.{{ oid }}"
+              notify_service: "{{ state_attr(ent, 'notify_service') or default_notify }}"
+          - action: switch.turn_off
+            target:
+              entity_id: "{{ ent }}"
+          - action: "notify.{{ notify_service }}"
+            data:
+              message: "clear_notification"
+              data:
+                tag: "med_early_{{ oid }}"
+      # 3. "Intended" tapped -> just clear the warning.
+      - conditions:
+          - "{{ trigger.id == 'button' }}"
+          - "{{ trigger.event.data.action.startswith('MED_KEEP_') }}"
+        sequence:
+          - variables:
+              oid: "{{ trigger.event.data.action | replace('MED_KEEP_', '') }}"
+              ent: "switch.{{ oid }}"
+              notify_service: "{{ state_attr(ent, 'notify_service') or default_notify }}"
+          - action: "notify.{{ notify_service }}"
+            data:
+              message: "clear_notification"
+              data:
+                tag: "med_early_{{ oid }}"
+mode: parallel

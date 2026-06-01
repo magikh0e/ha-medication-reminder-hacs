@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import homeassistant.util.dt as dt_util
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -31,6 +32,9 @@ from .const import (
     DEFAULT_RESET_TIME,
     DEFAULT_TIME_FORMAT,
     DOMAIN,
+    EVENT_DOSE_GIVEN,
+    EVENT_DOSE_UNDONE,
+    WEEKDAYS,
 )
 
 
@@ -157,13 +161,52 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Mark this dose given."""
+        was_on = self._attr_is_on
         self._attr_is_on = True
         self.async_write_ha_state()
+        if not was_on:
+            self._fire_dose_given_event()
+
+    @callback
+    def _fire_dose_given_event(self) -> None:
+        """Announce a dose was marked given, for companion automations."""
+        now = dt_util.now()
+        minutes_early: int | None = None
+        try:
+            hour, minute = (int(p) for p in self._time.split(":")[:2])
+            due = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+            minutes_early = round((due - now).total_seconds() / 60)
+        except (ValueError, AttributeError):
+            minutes_early = None
+        self.hass.bus.async_fire(
+            EVENT_DOSE_GIVEN,
+            {
+                "entity_id": self.entity_id,
+                "patient": self._patient,
+                "dose_time": self._time,
+                "medications": self._meds,
+                "days": self._days,
+                "notify_service": self._notify,
+                "scheduled_today": WEEKDAYS[now.weekday()] in self._days,
+                "minutes_early": minutes_early,
+            },
+        )
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """Mark this dose not given."""
+        """Mark this dose not given (un-mark). The daily reset uses reset_given,
+        not this, so only a deliberate un-mark fires the undone event."""
+        was_on = self._attr_is_on
         self._attr_is_on = False
         self.async_write_ha_state()
+        if was_on:
+            self.hass.bus.async_fire(
+                EVENT_DOSE_UNDONE,
+                {
+                    "entity_id": self.entity_id,
+                    "patient": self._patient,
+                    "medications": self._meds,
+                },
+            )
 
     @callback
     def reset_given(self) -> None:

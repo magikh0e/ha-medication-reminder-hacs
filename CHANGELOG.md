@@ -5,6 +5,11 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-06-01
+### Added
+- Early-dose warning, a soft over-dose guard. The dose switch now fires a `medication_reminder_dose_given` event when a dose is marked given, carrying `patient`, `dose_time`, `medications`, `days`, `notify_service`, `scheduled_today`, and `minutes_early`. The new `med_early_given` companion automation listens for it and notifies the caretaker when a dose is marked given well before its scheduled time (default 30 minutes early; set `early_grace_minutes: 0` to warn on any early marking). It warns rather than blocks, so you keep control, and the warning carries two action buttons (Companion app): "undo" un-marks the dose if it was a mistake, "intended" dismisses. Un-marking a dose (the undo, or a manual toggle-off) now restores that dose's supply count via a new `medication_reminder_dose_undone` event; the daily reset does not restore, since a given dose was actually taken. Idea from community member IOT7712.
+- Importable blueprints for every companion automation (reminders and missed-dose escalation, mark given from notification, low-supply refill, early-dose warning), under `blueprints/automation/medication_reminder/`. Add them with a one-click import and update them by re-importing, instead of copy-pasting YAML. Copying `companion-automations.yaml` still works as the alternative.
+
 ## [0.9.0] - 2026-05-31
 ### Added
 - Supply and refill tracking, per medication. In Configure you can now "Track a medication supply" with the units on hand, units consumed per dose, a low-stock threshold, and a refill amount. Each tracked medication gets a settable `number` entity that decrements when a dose containing that medication is marked given today (once per dose per day, restart-safe, and never on the daily reset). It exposes `doses_left` and an `est_runout_date` computed from the schedule. A per-patient "supplies low" `binary_sensor` (device class `problem`) goes red when any supply reaches its threshold, and a new companion automation sends a refill reminder. Idea from Home Assistant Community member Tadies, who built it on a dashboard with counter helpers.

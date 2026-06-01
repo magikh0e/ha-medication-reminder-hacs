@@ -4,6 +4,10 @@ import re
 
 DOMAIN = "medication_reminder"
 
+# Events fired on the HA bus when a dose is marked given / un-marked.
+EVENT_DOSE_GIVEN = f"{DOMAIN}_dose_given"
+EVENT_DOSE_UNDONE = f"{DOMAIN}_dose_undone"
+
 CONF_PATIENT = "patient"
 CONF_PATIENT_TYPE = "patient_type"
 CONF_DOSES = "doses"

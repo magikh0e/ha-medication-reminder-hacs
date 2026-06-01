@@ -1,0 +1,80 @@
+blueprint:
+  name: Medication Reminder - dose reminders and missed-dose escalation
+  description: >
+    Reminds about due medication doses, nags within each dose's window, and
+    escalates a missed dose once. Auto-discovers every dose switch created by the
+    Medication Reminder integration, so adding a patient or dose needs no changes
+    here. Import the "mark given from notification" blueprint alongside this one
+    for the action button to work.
+  domain: automation
+  author: magikh0e
+  source_url: https://github.com/magikh0e/ha-medication-reminder-hacs/blob/main/blueprints/automation/medication_reminder/medication_reminders.yaml
+  input:
+    fallback_notify:
+      name: Fallback notify target
+      description: >
+        Notify service used when a patient has no notify target set in the
+        integration, without the "notify." prefix (e.g. a group named caretakers).
+      default: caretakers
+      selector:
+        text:
+
+trigger:
+  - platform: time_pattern
+    minutes: "/5"
+variables:
+  default_notify: !input fallback_notify
+  today: "{{ ['mon','tue','wed','thu','fri','sat','sun'][now().weekday()] }}"
+action:
+  - repeat:
+      for_each: >
+        {{ states.switch
+           | selectattr('attributes.medications', 'defined')
+           | map(attribute='entity_id') | list }}
+      sequence:
+        - variables:
+            ent: "{{ repeat.item }}"
+            oid: "{{ ent.split('.')[1] }}"
+            given: "{{ is_state(ent, 'on') }}"
+            dtime: "{{ state_attr(ent, 'dose_time') }}"
+            patient: "{{ state_attr(ent, 'patient') }}"
+            meds: "{{ state_attr(ent, 'medications') }}"
+            days: "{{ state_attr(ent, 'days') or ['mon','tue','wed','thu','fri','sat','sun'] }}"
+            scheduled: "{{ today in days }}"
+            notify_service: "{{ state_attr(ent, 'notify_service') or default_notify }}"
+            nag_minutes: "{{ state_attr(ent, 'nag_minutes') | int(45) }}"
+            nag_interval: "{{ state_attr(ent, 'nag_interval') | int(15) }}"
+            mins_since: "{{ (now() - today_at(dtime)).total_seconds() / 60 }}"
+            clock: "{{ as_timestamp(today_at(dtime)) | timestamp_custom('%-I:%M %p') }}"
+        - choose:
+            # Reminder: scheduled today, within the nag window, not given.
+            - conditions:
+                - "{{ scheduled and not given and mins_since >= 0 and mins_since < nag_minutes and (mins_since % nag_interval) < 5 }}"
+              sequence:
+                - action: "notify.{{ notify_service }}"
+                  data:
+                    title: "💊 {{ patient }} ({{ clock }})"
+                    message: "Give {{ patient }}'s medication: {{ meds }}. Has it been given?"
+                    data:
+                      tag: "med_{{ oid }}"
+                      actions:
+                        - action: "MED_GIVEN_{{ oid }}"
+                          title: "✅ Mark given"
+            # Missed: past the window-end, fires once.
+            - conditions:
+                - "{{ scheduled and not given and mins_since >= nag_minutes and mins_since < nag_minutes + 5 }}"
+              sequence:
+                - action: "notify.{{ notify_service }}"
+                  data:
+                    title: "⚠️ MISSED: {{ patient }} ({{ clock }})"
+                    message: "{{ patient }}'s {{ clock }} dose ({{ meds }}) was NOT marked given. Please check on it."
+                    data:
+                      tag: "med_missed_{{ oid }}"
+                      priority: high
+                      ttl: 0
+                      push:
+                        interruption-level: time-sensitive
+                      actions:
+                        - action: "MED_GIVEN_{{ oid }}"
+                          title: "✅ Mark given"
+mode: single

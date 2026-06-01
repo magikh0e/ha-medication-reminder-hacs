@@ -1,0 +1,44 @@
+blueprint:
+  name: Medication Reminder - mark given from notification
+  description: >
+    Handles the "Mark given" button on the reminder and missed-dose
+    notifications: turns the dose switch on and clears the related notifications.
+    Import this alongside the dose-reminders blueprint.
+  domain: automation
+  author: magikh0e
+  source_url: https://github.com/magikh0e/ha-medication-reminder-hacs/blob/main/blueprints/automation/medication_reminder/mark_given.yaml
+  input:
+    fallback_notify:
+      name: Fallback notify target
+      description: >
+        Notify service used to clear notifications when a dose has no per-patient
+        target set, without the "notify." prefix.
+      default: caretakers
+      selector:
+        text:
+
+trigger:
+  - platform: event
+    event_type: mobile_app_notification_action
+condition:
+  - "{{ trigger.event.data.action.startswith('MED_GIVEN_') }}"
+variables:
+  default_notify: !input fallback_notify
+  oid: "{{ trigger.event.data.action | replace('MED_GIVEN_', '') }}"
+  ent: "switch.{{ oid }}"
+  notify_service: "{{ state_attr(ent, 'notify_service') or default_notify }}"
+action:
+  - action: switch.turn_on
+    target:
+      entity_id: "{{ ent }}"
+  - action: "notify.{{ notify_service }}"
+    data:
+      message: "clear_notification"
+      data:
+        tag: "med_{{ oid }}"
+  - action: "notify.{{ notify_service }}"
+    data:
+      message: "clear_notification"
+      data:
+        tag: "med_missed_{{ oid }}"
+mode: parallel

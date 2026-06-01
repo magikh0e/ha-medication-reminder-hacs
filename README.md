@@ -55,6 +55,10 @@ territory. A future version may move reminders into the integration itself.
 
 ### 1. Install the integration (HACS custom repository)
 
+[![Open your Home Assistant instance and add this repository to HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=magikh0e&repository=ha-medication-reminder-hacs&category=integration)
+
+Click the button above to add this repo to HACS in one step, then install and restart, or do it manually:
+
 1. HACS, top-right menu, **Custom repositories**.
 2. Add `https://github.com/magikh0e/ha-medication-reminder-hacs` as an **Integration**.
 3. Install **Medication Reminder**, then restart Home Assistant.

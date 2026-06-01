@@ -5,6 +5,10 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.2] - 2026-06-01
+### Fixed
+- Doses marked given before 0.11.1 (which have no stored give-time) no longer drift to the restart time on every reboot. On restore, a given dose with no recorded `given_at` now adopts its last known change time and keeps it, so the dashboard's "Already given at ..." freezes instead of changing each restart. Doses marked given from 0.11.1 onward already keep their exact give-time.
+
 ## [0.11.1] - 2026-06-01
 ### Fixed
 - The dashboard's "Already given at ..." time no longer resets after a Home Assistant restart. Each dose now records a `given_at` timestamp when it is marked given and persists it across restarts (the on/off state was already restart-safe; only the displayed give-time was resetting to the startup time). The dashboard reads `given_at`, falling back to `last_changed` for doses that were already given before upgrading.

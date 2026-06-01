@@ -213,6 +213,11 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
             self._given_at = restored.as_dict().get("given_at")
         if not self._attr_is_on:
             self._given_at = None
+        elif not self._given_at and last_state is not None:
+            # Dose marked given before given_at was tracked (or otherwise
+            # missing): freeze its last known change time so the displayed
+            # give-time stops drifting to the startup time on each restart.
+            self._given_at = last_state.last_changed.isoformat()
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Mark this dose given."""

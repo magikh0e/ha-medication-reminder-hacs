@@ -23,6 +23,9 @@ type: vertical-stack
 cards:
   # 1. Status panel (red/green)
   - type: markdown
+    card_mod:
+      style: |
+        ha-card { background: {% if (states.binary_sensor | selectattr('entity_id','search','_needs_attention') | selectattr('state','eq','on') | list | length) > 0 %}rgba(244, 67, 54, 0.15){% else %}rgba(76, 175, 80, 0.12){% endif %} !important; }
     content: |-
       {% set s = states.binary_sensor | selectattr('entity_id','search','_needs_attention') | list %}
       {% set red = s | selectattr('state','eq','on') | list %}
@@ -39,23 +42,44 @@ cards:
   - type: markdown
     content: |-
       {% set today = ['mon','tue','wed','thu','fri','sat','sun'][now().weekday()] %}
+      {% set week = ['mon','tue','wed','thu','fri','sat','sun'] %}
       {% set ns = namespace(meds=[]) %}
-      {% for s in states.switch if s.attributes.medications is defined and today in (s.attributes.days or ['mon','tue','wed','thu','fri','sat','sun']) %}
+      {% for s in states.switch if s.attributes.medications is defined and today in (s.attributes.days or week) %}
       {% set ns.meds = ns.meds + [s] %}
       {% endfor %}
       {% set given = ns.meds | selectattr('state','eq','on') | list %}
-      {% set pending = ns.meds | selectattr('state','eq','off') | list | sort(attribute='name') %}
+      {% set pending = ns.meds | selectattr('state','eq','off') | list %}
+      {% set ns2 = namespace(overdue=[], upcoming=[]) %}
+      {% for x in pending %}
+      {% set mins = (as_timestamp(now()) - as_timestamp(today_at(x.attributes.dose_time))) / 60 %}
+      {% if mins >= (x.attributes.nag_minutes | int(45)) %}
+      {% set ns2.overdue = ns2.overdue + [x] %}
+      {% else %}
+      {% set ns2.upcoming = ns2.upcoming + [x] %}
+      {% endif %}
+      {% endfor %}
       ### 💊 Doses today: {{ given|length }}/{{ ns.meds|length }} given
       {% if ns.meds|length == 0 -%}
       No doses scheduled today.
-      {%- elif pending|length == 0 -%}
+      {%- elif not pending -%}
       ✅ All doses given for today.
       {%- else -%}
-      **Still to give:**
-      {% for x in pending %}
-      - ⏳ {{ x.attributes.patient }} {{ as_timestamp(today_at(x.attributes.dose_time)) | timestamp_custom('%-I:%M %p') }} ({{ x.attributes.medications }})
+      {% if ns2.overdue %}**⚠️ Overdue:**
+      {% for x in ns2.overdue | sort(attribute='attributes.dose_time') %}
+      - {{ x.attributes.patient }} {{ as_timestamp(today_at(x.attributes.dose_time)) | timestamp_custom('%-I:%M %p') }} ({{ x.attributes.medications }})
       {%- endfor %}
+      {% endif %}
+      {% if ns2.upcoming %}**⏳ Upcoming:**
+      {% for x in ns2.upcoming | sort(attribute='attributes.dose_time') %}
+      - {{ x.attributes.patient }} {{ as_timestamp(today_at(x.attributes.dose_time)) | timestamp_custom('%-I:%M %p') }} ({{ x.attributes.medications }})
+      {%- endfor %}
+      {% endif %}
       {%- endif %}
+      {% set low = states.binary_sensor | selectattr('attributes.low_count','defined') | selectattr('state','eq','on') | list %}
+      {% if low %}
+
+      **📦 Refill soon:** {% for b in low %}{{ b.attributes.patient }} ({{ (b.attributes.low or []) | join(', ') }}){% if not loop.last %}; {% endif %}{% endfor %}
+      {% endif %}
       {% if given|length > 0 %}
 
       **Given:**

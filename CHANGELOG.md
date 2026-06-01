@@ -5,6 +5,10 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-06-01
+### Added
+- Every-N-days dose schedules (e.g. every other day, every third day). When adding a dose you can now choose the schedule type "Every N days" with an interval and a start date; the dose is due on the start date and every N days after. Day-of-week scheduling is still the default, and existing doses are unchanged (they default to the day-of-week behaviour). Each dose switch now also carries `schedule_type`, `interval_days`, `anchor_date`, and a computed `scheduled_today` attribute, and a single `is_due` rule decides "due today" for the status sensors, the supply run-out estimate, the companion automations, and the dashboard. Suggested by a community member.
+
 ## [0.10.0] - 2026-06-01
 ### Added
 - Early-dose warning, a soft over-dose guard. The dose switch now fires a `medication_reminder_dose_given` event when a dose is marked given, carrying `patient`, `dose_time`, `medications`, `days`, `notify_service`, `scheduled_today`, and `minutes_early`. The new `med_early_given` companion automation listens for it and notifies the caretaker when a dose is marked given well before its scheduled time (default 30 minutes early; set `early_grace_minutes: 0` to warn on any early marking). It warns rather than blocks, so you keep control, and the warning carries two action buttons (Companion app): "undo" un-marks the dose if it was a mistake, "intended" dismisses. Un-marking a dose (the undo, or a manual toggle-off) now restores that dose's supply count via a new `medication_reminder_dose_undone` event; the daily reset does not restore, since a given dose was actually taken. Idea from community member IOT7712.

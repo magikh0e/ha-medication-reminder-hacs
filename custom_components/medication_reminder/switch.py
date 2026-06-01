@@ -14,8 +14,10 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.util import slugify
 
 from .const import (
+    CONF_ANCHOR_DATE,
     CONF_DAYS,
     CONF_DOSES,
+    CONF_INTERVAL_DAYS,
     CONF_MEDS,
     CONF_NAG_INTERVAL,
     CONF_NAG_MINUTES,
@@ -23,9 +25,11 @@ from .const import (
     CONF_PATIENT,
     CONF_PATIENT_TYPE,
     CONF_RESET_TIME,
+    CONF_SCHEDULE_TYPE,
     CONF_TIME,
     CONF_TIME_FORMAT,
     DEFAULT_DAYS,
+    DEFAULT_INTERVAL_DAYS,
     DEFAULT_NAG_INTERVAL,
     DEFAULT_NAG_MINUTES,
     DEFAULT_PATIENT_TYPE,
@@ -34,7 +38,8 @@ from .const import (
     DOMAIN,
     EVENT_DOSE_GIVEN,
     EVENT_DOSE_UNDONE,
-    WEEKDAYS,
+    SCHEDULE_WEEKDAYS,
+    is_due,
 )
 
 
@@ -112,6 +117,10 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
         self._meds = dose[CONF_MEDS]
         # Days of the week this dose applies to (default: every day).
         self._days = dose.get(CONF_DAYS) or list(DEFAULT_DAYS)
+        # Schedule type: weekdays (default) or every-N-days from an anchor date.
+        self._schedule_type = dose.get(CONF_SCHEDULE_TYPE) or SCHEDULE_WEEKDAYS
+        self._interval_days = int(dose.get(CONF_INTERVAL_DAYS) or DEFAULT_INTERVAL_DAYS)
+        self._anchor_date = dose.get(CONF_ANCHOR_DATE) or ""
         # Display time per the chosen format, with the medications inline.
         self._attr_name = f"{patient} {self._format_time(self._time)} ({self._meds})"
         self._attr_unique_id = (
@@ -137,6 +146,19 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
         except (ValueError, AttributeError):
             return hhmm
 
+    def _schedule_attrs(self) -> dict[str, Any]:
+        """The schedule fields shaped for is_due()."""
+        return {
+            CONF_SCHEDULE_TYPE: self._schedule_type,
+            CONF_DAYS: self._days,
+            CONF_INTERVAL_DAYS: self._interval_days,
+            CONF_ANCHOR_DATE: self._anchor_date,
+        }
+
+    def _scheduled_today(self) -> bool:
+        """Whether this dose is due today, honouring its schedule type."""
+        return is_due(self._schedule_attrs(), dt_util.now().date())
+
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Metadata the companion automations read to build reminders."""
@@ -146,6 +168,10 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
             "dose_time": self._time,
             "medications": self._meds,
             "days": self._days,
+            "schedule_type": self._schedule_type,
+            "interval_days": self._interval_days,
+            "anchor_date": self._anchor_date,
+            "scheduled_today": self._scheduled_today(),
             "notify_service": self._notify,
             "nag_minutes": self._nag_minutes,
             "nag_interval": self._nag_interval,
@@ -187,7 +213,7 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
                 "medications": self._meds,
                 "days": self._days,
                 "notify_service": self._notify,
-                "scheduled_today": WEEKDAYS[now.weekday()] in self._days,
+                "scheduled_today": is_due(self._schedule_attrs(), now.date()),
                 "minutes_early": minutes_early,
             },
         )

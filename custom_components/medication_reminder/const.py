@@ -1,6 +1,7 @@
 """Constants for the Medication Reminder integration."""
 
 import re
+from datetime import date
 
 DOMAIN = "medication_reminder"
 
@@ -20,6 +21,11 @@ CONF_NAG_MINUTES = "nag_minutes"
 CONF_NAG_INTERVAL = "nag_interval"
 CONF_TIME_FORMAT = "time_format"
 
+# Per-dose schedule type and its interval settings.
+CONF_SCHEDULE_TYPE = "schedule_type"
+CONF_INTERVAL_DAYS = "interval_days"
+CONF_ANCHOR_DATE = "anchor_date"
+
 # Supply / refill tracking (per medication).
 CONF_SUPPLIES = "supplies"
 CONF_SUPPLY_MED = "supply_med"
@@ -33,6 +39,12 @@ WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
 DEFAULT_PATIENT_TYPE = "person"
 DEFAULT_DAYS = WEEKDAYS  # every day = daily
+
+# Dose schedule types.
+SCHEDULE_WEEKDAYS = "weekdays"  # on chosen days of the week (default)
+SCHEDULE_INTERVAL = "interval"  # every N days from an anchor date
+DEFAULT_SCHEDULE_TYPE = SCHEDULE_WEEKDAYS
+DEFAULT_INTERVAL_DAYS = 2
 DEFAULT_RESET_TIME = "00:01:00"
 DEFAULT_NAG_MINUTES = 45
 DEFAULT_NAG_INTERVAL = 15
@@ -70,3 +82,53 @@ def meds_contains(meds, med_name):
     if not target:
         return False
     return any(part.lower() == target for part in split_medications(meds))
+
+
+def _parse_iso_date(value):
+    """Parse an ISO 'YYYY-MM-DD' string to a date, or None if unparseable."""
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(str(value)[:10])
+    except (ValueError, TypeError):
+        return None
+
+
+def _interval_n(data):
+    """The every-N-days interval from a schedule mapping (>= 1)."""
+    try:
+        n = int(data.get(CONF_INTERVAL_DAYS) or DEFAULT_INTERVAL_DAYS)
+    except (TypeError, ValueError):
+        n = DEFAULT_INTERVAL_DAYS
+    return max(n, 1)
+
+
+def is_due(data, on_date):
+    """Whether a dose is scheduled on `on_date` (a datetime.date).
+
+    `data` is any mapping carrying the schedule keys (a dose dict OR a switch's
+    attributes): `schedule_type`, `days`, `interval_days`, `anchor_date`.
+    Missing `schedule_type` defaults to the day-of-week behaviour, so existing
+    doses keep working unchanged.
+    """
+    stype = data.get(CONF_SCHEDULE_TYPE) or SCHEDULE_WEEKDAYS
+    if stype == SCHEDULE_INTERVAL:
+        n = _interval_n(data)
+        anchor = _parse_iso_date(data.get(CONF_ANCHOR_DATE))
+        if anchor is None:
+            # No anchor: fall back to a fixed reference so it stays deterministic.
+            return on_date.toordinal() % n == 0
+        if on_date < anchor:
+            return False
+        return (on_date - anchor).days % n == 0
+    days = data.get(CONF_DAYS) or WEEKDAYS
+    return WEEKDAYS[on_date.weekday()] in days
+
+
+def doses_per_week(data):
+    """Average times per week a dose fires, for the run-out estimate."""
+    stype = data.get(CONF_SCHEDULE_TYPE) or SCHEDULE_WEEKDAYS
+    if stype == SCHEDULE_INTERVAL:
+        return 7.0 / _interval_n(data)
+    days = data.get(CONF_DAYS) or WEEKDAYS
+    return float(len(days))

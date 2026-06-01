@@ -40,7 +40,7 @@ action:
             patient: "{{ state_attr(ent, 'patient') }}"
             meds: "{{ state_attr(ent, 'medications') }}"
             days: "{{ state_attr(ent, 'days') or ['mon','tue','wed','thu','fri','sat','sun'] }}"
-            scheduled: "{{ today in days }}"
+            scheduled: "{{ (today in days) if state_attr(ent, 'scheduled_today') is none else state_attr(ent, 'scheduled_today') }}"
             notify_service: "{{ state_attr(ent, 'notify_service') or default_notify }}"
             nag_minutes: "{{ state_attr(ent, 'nag_minutes') | int(45) }}"
             nag_interval: "{{ state_attr(ent, 'nag_interval') | int(15) }}"

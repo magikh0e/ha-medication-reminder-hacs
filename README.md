@@ -29,14 +29,14 @@ auto-created entities? Use this.
 - **Pets and people, all in the UI.** Add patients and their dose schedule from Settings, no YAML; entities auto-create per patient and survive restarts.
 - **Glanceable, fail-safe status.** A per-patient red/green "needs attention" sensor that trips on elapsed time alone and fails safe toward "problem", wire it to a panel, light, or siren.
 - **Supply & refill tracking.** Per-medication counts that decrement as doses are given, with doses-left, a run-out estimate, a low-stock red flag at your reorder threshold, and a refill reminder.
-- **Flexible scheduling.** Each dose daily or on specific days of the week, 12h or 24h display.
+- **Flexible scheduling.** Each dose daily, on specific days of the week, or every N days from a start date, 12h or 24h display.
 - **Actionable reminders.** Nagging, missed-dose escalation, and a "Mark given" button from the notification, routed per patient.
 - **Zero-edit dashboard.** Auto-discovers every patient and dose, no names to maintain.
 
 ## What it does
 
 - 🖱️ **UI configuration:** add a patient, choose who to notify, then add doses (a time + the medications) from Settings. No YAML for the schedule.
-- 🗓️ **Flexible scheduling:** each dose can be daily or limited to specific days of the week (e.g. Mondays only, or Mon/Wed/Fri). It only reminds and counts on its scheduled days.
+- 🗓️ **Flexible scheduling:** each dose can be daily, limited to specific days of the week (e.g. Mondays only, or Mon/Wed/Fri), or every N days from a start date (e.g. every other day). It only reminds and counts on the days it is due.
 - 👥 **Per-patient notify target:** pick the person or group to remind for each patient in the UI (e.g. one dog's reminders to you, another's to a partner).
 - 🔀 **Auto-created entities:** each dose becomes a `switch` (on = given today), grouped under a device per patient.
 - ♻️ **Daily reset:** every dose flips back to "not given" at 00:01.
@@ -246,7 +246,7 @@ content: |-
 
 ## How marking works (the contract)
 
-- The integration publishes `switch.*` entities carrying `patient` / `patient_type` / `dose_time` / `medications` / `days` / `notify_service` attributes (a dose is only reminded, counted, or flagged overdue on its scheduled `days`). Per patient it also publishes two binary sensors:
+- The integration publishes `switch.*` entities carrying `patient` / `patient_type` / `dose_time` / `medications` / `days` / `schedule_type` / `interval_days` / `anchor_date` / `scheduled_today` / `notify_service` attributes (a dose is only reminded, counted, or flagged overdue when `scheduled_today` is true, which respects both day-of-week and every-N-days schedules). Per patient it also publishes two binary sensors:
   - `binary_sensor.<patient>_all_doses_given` (patient-type icon) - on when all of that patient's doses are given today, with `total` / `given` / `remaining` / `pending` attributes.
   - `binary_sensor.<patient>_needs_attention` (device class `problem`) - **red when a dose is overdue** (past its time by the nag window and still not given), green when all is well. It re-evaluates on a 60-second timer so it trips on elapsed time alone, and fails safe toward "problem". Attributes: `overdue` / `overdue_count`.
 - The companion reminder automation iterates those switches and routes each reminder to its `notify_service` / `nag_minutes` / `nag_interval`, so adding a dose or changing a patient's settings in the UI needs **no** automation edits.
@@ -293,7 +293,7 @@ once-a-day refill reminder to the patient's notify target for anything low.
 - Optional in-integration notifications/nagging (so YAML companions become optional).
 - HACS default-store submission once validated.
 - Over-dose guard: a minimum interval between doses and a max-per-day cap, warning before a dose is marked given too soon or too often. An early-dose warning (a dose given before its scheduled time) shipped in 0.10.0 as a first step; the interval and daily cap remain. (Idea from community member IOT7712.)
-- More schedule types beyond day-of-week: every-N-days (every other day, every third day), day-of-month / monthly, and on/off cycles. Weekly already works by selecting a single weekday; this would add interval- and date-based schedules with a start anchor and a computed `scheduled_today` attribute the sensors, automations, and dashboard can share. (Suggested by a community member.)
+- More schedule types beyond day-of-week. Every-N-days (every other day, every third day) shipped in 0.11.0, using a start date and a shared `scheduled_today` attribute the sensors, automations, and dashboard all honour. Day-of-month / monthly and on/off cycles remain. (Suggested by a community member.)
 
 ## Acknowledgements
 

@@ -9,10 +9,13 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv, selector
+from homeassistant.util import dt as dt_util
 
 from .const import (
+    CONF_ANCHOR_DATE,
     CONF_DAYS,
     CONF_DOSES,
+    CONF_INTERVAL_DAYS,
     CONF_MEDS,
     CONF_NAG_INTERVAL,
     CONF_NAG_MINUTES,
@@ -20,6 +23,7 @@ from .const import (
     CONF_PATIENT,
     CONF_PATIENT_TYPE,
     CONF_RESET_TIME,
+    CONF_SCHEDULE_TYPE,
     CONF_SUPPLIES,
     CONF_SUPPLY_MED,
     CONF_SUPPLY_PER_DOSE,
@@ -29,16 +33,19 @@ from .const import (
     CONF_TIME,
     CONF_TIME_FORMAT,
     DEFAULT_DAYS,
+    DEFAULT_INTERVAL_DAYS,
     DEFAULT_NAG_INTERVAL,
     DEFAULT_NAG_MINUTES,
     DEFAULT_PATIENT_TYPE,
     DEFAULT_RESET_TIME,
+    DEFAULT_SCHEDULE_TYPE,
     DEFAULT_SUPPLY_PER_DOSE,
     DEFAULT_SUPPLY_REFILL_TO,
     DEFAULT_SUPPLY_THRESHOLD,
     DEFAULT_SUPPLY_UNITS,
     DEFAULT_TIME_FORMAT,
     DOMAIN,
+    SCHEDULE_INTERVAL,
 )
 
 
@@ -99,6 +106,32 @@ def _days_selector() -> selector.SelectSelector:
             ],
             multiple=True,
             mode=selector.SelectSelectorMode.LIST,
+        )
+    )
+
+
+def _schedule_type_selector() -> selector.SelectSelector:
+    """Dropdown: day-of-week schedule vs every-N-days."""
+    return selector.SelectSelector(
+        selector.SelectSelectorConfig(
+            options=[
+                {"value": "weekdays", "label": "On chosen days of the week"},
+                {"value": "interval", "label": "Every N days"},
+            ],
+            mode=selector.SelectSelectorMode.DROPDOWN,
+        )
+    )
+
+
+def _interval_selector() -> selector.NumberSelector:
+    """Whole-number box for the every-N-days interval."""
+    return selector.NumberSelector(
+        selector.NumberSelectorConfig(
+            min=1,
+            max=60,
+            step=1,
+            mode=selector.NumberSelectorMode.BOX,
+            unit_of_measurement="days",
         )
     )
 
@@ -199,24 +232,49 @@ class MedicationReminderOptionsFlow(config_entries.OptionsFlow):
     async def async_step_add_dose(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Add one dose: a time, the medications, and which days it applies."""
+        """Add one dose: a time, the medications, and how it repeats.
+
+        Schedule type "weekdays" uses the days picker (the default, unchanged
+        behaviour); "interval" uses every-N-days from a start date. The fields
+        for the other type are simply ignored on save.
+        """
         if user_input is not None:
             options = dict(self._entry.options)
             doses = list(options.get(CONF_DOSES, []))
-            doses.append(
-                {
-                    CONF_TIME: str(user_input[CONF_TIME])[:5],
-                    CONF_MEDS: user_input[CONF_MEDS],
-                    CONF_DAYS: user_input.get(CONF_DAYS) or list(DEFAULT_DAYS),
-                }
-            )
+            stype = user_input.get(CONF_SCHEDULE_TYPE, DEFAULT_SCHEDULE_TYPE)
+            dose = {
+                CONF_TIME: str(user_input[CONF_TIME])[:5],
+                CONF_MEDS: user_input[CONF_MEDS],
+                CONF_SCHEDULE_TYPE: stype,
+            }
+            if stype == SCHEDULE_INTERVAL:
+                dose[CONF_INTERVAL_DAYS] = int(
+                    user_input.get(CONF_INTERVAL_DAYS, DEFAULT_INTERVAL_DAYS)
+                )
+                dose[CONF_ANCHOR_DATE] = str(
+                    user_input.get(CONF_ANCHOR_DATE)
+                    or dt_util.now().date().isoformat()
+                )[:10]
+                dose[CONF_DAYS] = list(DEFAULT_DAYS)
+            else:
+                dose[CONF_DAYS] = user_input.get(CONF_DAYS) or list(DEFAULT_DAYS)
+            doses.append(dose)
             options[CONF_DOSES] = doses
             return self.async_create_entry(title="", data=options)
         schema = vol.Schema(
             {
                 vol.Required(CONF_TIME): selector.TimeSelector(),
                 vol.Required(CONF_MEDS): selector.TextSelector(),
+                vol.Required(
+                    CONF_SCHEDULE_TYPE, default=DEFAULT_SCHEDULE_TYPE
+                ): _schedule_type_selector(),
                 vol.Required(CONF_DAYS, default=list(DEFAULT_DAYS)): _days_selector(),
+                vol.Optional(
+                    CONF_INTERVAL_DAYS, default=DEFAULT_INTERVAL_DAYS
+                ): _interval_selector(),
+                vol.Optional(
+                    CONF_ANCHOR_DATE, default=dt_util.now().date().isoformat()
+                ): selector.DateSelector(),
             }
         )
         return self.async_show_form(step_id="add_dose", data_schema=schema)

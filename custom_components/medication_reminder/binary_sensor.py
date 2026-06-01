@@ -3,7 +3,7 @@
 - <patient> all doses given : on when every dose scheduled today is given.
 - <patient> needs attention  : problem sensor, on (red) when a dose is overdue.
 
-Both consider only doses scheduled for the current day of the week.
+Both consider only doses scheduled for the current day (any schedule type).
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ from .const import (
     DEFAULT_PATIENT_TYPE,
     DOMAIN,
     PATIENT_ICONS,
-    WEEKDAYS,
+    is_due,
 )
 
 # Re-check the overdue status this often, so it trips on time alone.
@@ -71,13 +71,9 @@ class _DoseLookupMixin:
         ]
 
     def _todays_doses(self) -> list:
-        """This patient's doses scheduled for the current weekday."""
-        today = WEEKDAYS[dt_util.now().weekday()]
-        return [
-            s
-            for s in self._doses()
-            if today in (s.attributes.get("days") or WEEKDAYS)
-        ]
+        """This patient's doses scheduled for today (any schedule type)."""
+        today = dt_util.now().date()
+        return [s for s in self._doses() if is_due(s.attributes, today)]
 
     @callback
     def _track_dose_changes(self) -> None:

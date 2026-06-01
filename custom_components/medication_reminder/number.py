@@ -41,7 +41,8 @@ from .const import (
     DEFAULT_SUPPLY_UNITS,
     DOMAIN,
     EVENT_DOSE_UNDONE,
-    WEEKDAYS,
+    doses_per_week,
+    is_due,
     meds_contains,
 )
 
@@ -128,12 +129,11 @@ class MedicationSupplyNumber(NumberEntity, RestoreEntity):
             result.append(s)
         return result
 
-    def _doses_per_week(self) -> int:
-        """How many times per week this medication is scheduled."""
-        total = 0
+    def _doses_per_week(self) -> float:
+        """How many times per week this medication is scheduled (any type)."""
+        total = 0.0
         for s in self._matching_dose_states():
-            days = s.attributes.get("days") or WEEKDAYS
-            total += len(days)
+            total += doses_per_week(s.attributes)
         return total
 
     def _est_runout_date(self) -> str | None:
@@ -195,9 +195,7 @@ class MedicationSupplyNumber(NumberEntity, RestoreEntity):
         meds = new.attributes.get("medications")
         if meds is None or not meds_contains(meds, self._med):
             return
-        today = WEEKDAYS[dt_util.now().weekday()]
-        days = new.attributes.get("days") or WEEKDAYS
-        if today not in days:
+        if not is_due(new.attributes, dt_util.now().date()):
             return
         date_str = dt_util.now().date().isoformat()
         if self._consumed.get(entity_id) == date_str:

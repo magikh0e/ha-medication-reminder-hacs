@@ -52,7 +52,7 @@ cards:
               {% set today = ['mon','tue','wed','thu','fri','sat','sun'][now().weekday()] %}
               {% set week = ['mon','tue','wed','thu','fri','sat','sun'] %}
               {% set ns = namespace(meds=[]) %}
-              {% for s in states.switch if s.attributes.medications is defined and today in (s.attributes.days or week) %}
+              {% for s in states.switch if s.attributes.medications is defined and s.attributes.get('scheduled_today', today in (s.attributes.days or week)) %}
               {% set ns.meds = ns.meds + [s] %}
               {% endfor %}
               {% set given = ns.meds | selectattr('state','eq','on') | list %}
@@ -116,7 +116,7 @@ cards:
               template: >
                 {% set today = ['mon','tue','wed','thu','fri','sat','sun'][now().weekday()] %}
                 {% for s in states.switch if s.attributes.medications is defined
-                   and today in (s.attributes.days or ['mon','tue','wed','thu','fri','sat','sun']) %}
+                   and s.attributes.get('scheduled_today', today in (s.attributes.days or ['mon','tue','wed','thu','fri','sat','sun'])) %}
                 {{ s.entity_id }}
                 {% endfor %}
             sort:
@@ -159,6 +159,8 @@ cards:
               {% for d in pdoses %}
               {%- set days = d.attributes.days or week %}
               {%- set fmt = '%H:%M' if d.attributes.time_format == '24h' else '%-I:%M %p' %}
-              - **{{ as_timestamp(today_at(d.attributes.dose_time)) | timestamp_custom(fmt) }}** {{ d.attributes.medications }} ({{ 'Daily' if days|length == 7 else (week | select('in', days) | map('capitalize') | join(', ')) }})
+              {%- set n = d.attributes.interval_days | int(2) %}
+              {%- set cadence = ('Daily' if n == 1 else 'Every ' ~ n ~ ' days') if d.attributes.schedule_type == 'interval' else ('Daily' if days|length == 7 else (week | select('in', days) | map('capitalize') | join(', '))) %}
+              - **{{ as_timestamp(today_at(d.attributes.dose_time)) | timestamp_custom(fmt) }}** {{ d.attributes.medications }} ({{ cadence }})
               {%- endfor %}
               {% endfor %}

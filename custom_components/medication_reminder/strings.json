@@ -29,11 +29,14 @@
       },
       "add_dose": {
         "title": "Add a dose",
-        "description": "Pick the time, list the medications, and choose which days of the week this dose applies to (all days = daily).",
+        "description": "Pick the time and list the medications, then choose how it repeats: on chosen days of the week (all days = daily), or every N days from a start date.",
         "data": {
           "time": "Time",
           "meds": "Medications",
-          "days": "Days of the week"
+          "schedule_type": "Repeat",
+          "days": "Days of the week (for the weekly option)",
+          "interval_days": "Every N days (for the interval option)",
+          "anchor_date": "Start date (for the interval option)"
         }
       },
       "remove_dose": {

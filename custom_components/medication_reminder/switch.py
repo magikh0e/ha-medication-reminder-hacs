@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 import homeassistant.util.dt as dt_util
@@ -10,7 +11,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_change
-from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers.restore_state import ExtraStoredData, RestoreEntity
 from homeassistant.util import slugify
 
 from .const import (
@@ -41,6 +42,21 @@ from .const import (
     SCHEDULE_WEEKDAYS,
     is_due,
 )
+
+
+@dataclass
+class _DoseExtraData(ExtraStoredData):
+    """Restore-state payload: when the dose was actually marked given.
+
+    The on/off state restores on its own, but a restart resets the entity's
+    last_changed, so we persist the real give-time separately to keep the
+    dashboard's "Already given at ..." accurate across restarts.
+    """
+
+    given_at: str | None
+
+    def as_dict(self) -> dict[str, Any]:
+        return {"given_at": self.given_at}
 
 
 async def async_setup_entry(
@@ -121,6 +137,8 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
         self._schedule_type = dose.get(CONF_SCHEDULE_TYPE) or SCHEDULE_WEEKDAYS
         self._interval_days = int(dose.get(CONF_INTERVAL_DAYS) or DEFAULT_INTERVAL_DAYS)
         self._anchor_date = dose.get(CONF_ANCHOR_DATE) or ""
+        # When the dose was last marked given (ISO), persisted across restarts.
+        self._given_at: str | None = None
         # Display time per the chosen format, with the medications inline.
         self._attr_name = f"{patient} {self._format_time(self._time)} ({self._meds})"
         self._attr_unique_id = (
@@ -176,19 +194,32 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
             "nag_minutes": self._nag_minutes,
             "nag_interval": self._nag_interval,
             "time_format": self._time_format,
+            "given_at": self._given_at,
         }
 
+    @property
+    def extra_restore_state_data(self) -> _DoseExtraData:
+        """Persist the give-time so it survives restarts."""
+        return _DoseExtraData(self._given_at)
+
     async def async_added_to_hass(self) -> None:
-        """Restore the given/not-given state across restarts."""
+        """Restore the given/not-given state and give-time across restarts."""
         await super().async_added_to_hass()
         last_state = await self.async_get_last_state()
         if last_state is not None:
             self._attr_is_on = last_state.state == "on"
+        restored = await self.async_get_last_extra_data()
+        if restored is not None:
+            self._given_at = restored.as_dict().get("given_at")
+        if not self._attr_is_on:
+            self._given_at = None
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Mark this dose given."""
         was_on = self._attr_is_on
         self._attr_is_on = True
+        if not was_on:
+            self._given_at = dt_util.now().isoformat()
         self.async_write_ha_state()
         if not was_on:
             self._fire_dose_given_event()
@@ -223,6 +254,7 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
         not this, so only a deliberate un-mark fires the undone event."""
         was_on = self._attr_is_on
         self._attr_is_on = False
+        self._given_at = None
         self.async_write_ha_state()
         if was_on:
             self.hass.bus.async_fire(
@@ -236,6 +268,7 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
 
     @callback
     def reset_given(self) -> None:
-        """Daily reset: clear the given flag."""
+        """Daily reset: clear the given flag and give-time."""
         self._attr_is_on = False
+        self._given_at = None
         self.async_write_ha_state()

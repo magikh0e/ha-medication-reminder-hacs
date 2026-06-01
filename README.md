@@ -246,7 +246,7 @@ content: |-
 
 ## How marking works (the contract)
 
-- The integration publishes `switch.*` entities carrying `patient` / `patient_type` / `dose_time` / `medications` / `days` / `schedule_type` / `interval_days` / `anchor_date` / `scheduled_today` / `notify_service` attributes (a dose is only reminded, counted, or flagged overdue when `scheduled_today` is true, which respects both day-of-week and every-N-days schedules). Per patient it also publishes two binary sensors:
+- The integration publishes `switch.*` entities carrying `patient` / `patient_type` / `dose_time` / `medications` / `days` / `schedule_type` / `interval_days` / `anchor_date` / `scheduled_today` / `given_at` / `notify_service` attributes (a dose is only reminded, counted, or flagged overdue when `scheduled_today` is true, which respects both day-of-week and every-N-days schedules). Per patient it also publishes two binary sensors:
   - `binary_sensor.<patient>_all_doses_given` (patient-type icon) - on when all of that patient's doses are given today, with `total` / `given` / `remaining` / `pending` attributes.
   - `binary_sensor.<patient>_needs_attention` (device class `problem`) - **red when a dose is overdue** (past its time by the nag window and still not given), green when all is well. It re-evaluates on a 60-second timer so it trips on elapsed time alone, and fails safe toward "problem". Attributes: `overdue` / `overdue_count`.
 - The companion reminder automation iterates those switches and routes each reminder to its `notify_service` / `nag_minutes` / `nag_interval`, so adding a dose or changing a patient's settings in the UI needs **no** automation edits.

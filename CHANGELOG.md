@@ -5,6 +5,10 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.1] - 2026-06-01
+### Fixed
+- The dashboard's "Already given at ..." time no longer resets after a Home Assistant restart. Each dose now records a `given_at` timestamp when it is marked given and persists it across restarts (the on/off state was already restart-safe; only the displayed give-time was resetting to the startup time). The dashboard reads `given_at`, falling back to `last_changed` for doses that were already given before upgrading.
+
 ## [0.11.0] - 2026-06-01
 ### Added
 - Every-N-days dose schedules (e.g. every other day, every third day). When adding a dose you can now choose the schedule type "Every N days" with an interval and a start date; the dose is due on the start date and every N days after. Day-of-week scheduling is still the default, and existing doses are unchanged (they default to the day-of-week behaviour). Each dose switch now also carries `schedule_type`, `interval_days`, `anchor_date`, and a computed `scheduled_today` attribute, and a single `is_due` rule decides "due today" for the status sensors, the supply run-out estimate, the companion automations, and the dashboard. Suggested by a community member.

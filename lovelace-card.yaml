@@ -84,7 +84,8 @@ cards:
 
       **Already given:**
       {% for x in given | sort(attribute='last_changed') %}
-      - ✅ {{ x.attributes.patient }} {{ as_timestamp(today_at(x.attributes.dose_time)) | timestamp_custom('%-I:%M %p') }} at {{ as_timestamp(x.last_changed) | timestamp_custom('%-I:%M %p') }}
+      {%- set gat = x.attributes.given_at or x.last_changed %}
+      - ✅ {{ x.attributes.patient }} {{ as_timestamp(today_at(x.attributes.dose_time)) | timestamp_custom('%-I:%M %p') }} at {{ as_timestamp(gat) | timestamp_custom('%-I:%M %p') }}
       {%- endfor %}
       {% endif %}
 

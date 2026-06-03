@@ -45,6 +45,9 @@
           "cycle_on": "Days on (for the on/off cycle)",
           "cycle_off": "Days off (for the on/off cycle)",
           "anchor_date": "Start date (for the interval or cycle option)"
+        },
+        "data_description": {
+          "meds": "Separate multiple medications with &, +, /, or a comma."
         }
       },
       "remove_dose": {

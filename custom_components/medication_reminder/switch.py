@@ -114,6 +114,7 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
     """A single scheduled dose. on = given today, off = not yet given."""
 
     _attr_should_poll = False
+    _attr_has_entity_name = True
     _attr_icon = "mdi:pill"  # doses keep the pill icon regardless of patient type
 
     def __init__(
@@ -147,7 +148,7 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
         # When the dose was last marked given (ISO), persisted across restarts.
         self._given_at: str | None = None
         # Display time per the chosen format, with the medications inline.
-        self._attr_name = f"{patient} {self._format_time(self._time)} ({self._meds})"
+        self._attr_name = f"{self._format_time(self._time)} ({self._meds})"
         self._attr_unique_id = (
             f"{entry.entry_id}_{slugify(self._time + '_' + self._meds)}"
         )

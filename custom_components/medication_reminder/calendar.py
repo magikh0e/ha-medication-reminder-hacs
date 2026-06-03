@@ -44,12 +44,13 @@ class MedicationCalendar(CalendarEntity):
     """A read-only calendar of a patient's scheduled doses."""
 
     _attr_should_poll = False
+    _attr_has_entity_name = True
     _attr_icon = "mdi:calendar-clock"
 
     def __init__(self, entry: ConfigEntry, patient: str) -> None:
         self._entry = entry
         self._patient = patient
-        self._attr_name = f"{patient} medication"
+        self._attr_name = "Medication"
         self._attr_unique_id = f"{entry.entry_id}_calendar"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, entry.entry_id)},

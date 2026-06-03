@@ -41,12 +41,13 @@ class MedicationRefillButton(ButtonEntity):
     """One-tap restock of a medication supply to its refill-to amount."""
 
     _attr_should_poll = False
+    _attr_has_entity_name = True
     _attr_icon = "mdi:package-variant-plus"
 
     def __init__(self, entry: ConfigEntry, patient: str, med: str) -> None:
         self._patient = patient
         self._med = med
-        self._attr_name = f"{patient} {med} refill"
+        self._attr_name = f"{med} refill"
         self._attr_unique_id = f"{entry.entry_id}_refill_{slugify(med)}"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, entry.entry_id)},

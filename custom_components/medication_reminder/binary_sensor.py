@@ -99,11 +99,12 @@ class AllDosesGivenBinarySensor(_DoseLookupMixin, BinarySensorEntity):
     """On when every dose scheduled today for this patient is marked given."""
 
     _attr_should_poll = False
+    _attr_has_entity_name = True
 
     def __init__(self, entry: ConfigEntry, patient: str, patient_type: str) -> None:
         self._patient = patient
         self._patient_type = patient_type
-        self._attr_name = f"{patient} all doses given"
+        self._attr_name = "All doses given"
         self._attr_unique_id = f"{entry.entry_id}_all_doses_given"
         self._attr_icon = PATIENT_ICONS.get(patient_type, "mdi:check-all")
         self._attr_device_info = {
@@ -148,10 +149,11 @@ class NeedsAttentionBinarySensor(_DoseLookupMixin, BinarySensorEntity):
 
     _attr_should_poll = False
     _attr_device_class = BinarySensorDeviceClass.PROBLEM
+    _attr_has_entity_name = True
 
     def __init__(self, entry: ConfigEntry, patient: str) -> None:
         self._patient = patient
-        self._attr_name = f"{patient} needs attention"
+        self._attr_name = "Needs attention"
         self._attr_unique_id = f"{entry.entry_id}_needs_attention"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, entry.entry_id)},
@@ -216,13 +218,14 @@ class SuppliesLowBinarySensor(BinarySensorEntity):
 
     _attr_should_poll = False
     _attr_device_class = BinarySensorDeviceClass.PROBLEM
+    _attr_has_entity_name = True
 
     def __init__(
         self, entry: ConfigEntry, patient: str, notify_target: str
     ) -> None:
         self._patient = patient
         self._notify = notify_target
-        self._attr_name = f"{patient} supplies low"
+        self._attr_name = "Supplies low"
         self._attr_unique_id = f"{entry.entry_id}_supplies_low"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, entry.entry_id)},

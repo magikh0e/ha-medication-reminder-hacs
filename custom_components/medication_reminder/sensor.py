@@ -45,6 +45,7 @@ class MedicationNextDoseSensor(SensorEntity):
     """Timestamp of the patient's next upcoming dose."""
 
     _attr_should_poll = False
+    _attr_has_entity_name = True
     _attr_device_class = SensorDeviceClass.TIMESTAMP
     _attr_icon = "mdi:clock-time-four-outline"
 
@@ -53,7 +54,7 @@ class MedicationNextDoseSensor(SensorEntity):
         self._patient = patient
         self._value: datetime | None = None
         self._meds: str | None = None
-        self._attr_name = f"{patient} next dose"
+        self._attr_name = "Next dose"
         self._attr_unique_id = f"{entry.entry_id}_next_dose"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, entry.entry_id)},

@@ -65,6 +65,7 @@ class MedicationSupplyNumber(NumberEntity, RestoreEntity):
     """Units on hand for one medication. Decrements as doses are given."""
 
     _attr_should_poll = False
+    _attr_has_entity_name = True
     _attr_icon = "mdi:pill-multiple"
     _attr_native_min_value = 0
     _attr_native_max_value = 9999
@@ -88,7 +89,7 @@ class MedicationSupplyNumber(NumberEntity, RestoreEntity):
         self._value = float(supply.get(CONF_SUPPLY_UNITS, DEFAULT_SUPPLY_UNITS))
         # dose entity_id -> calendar date already counted, to avoid double-count.
         self._consumed: dict[str, str] = {}
-        self._attr_name = f"{patient} {self._med} supply"
+        self._attr_name = f"{self._med} supply"
         self._attr_unique_id = f"{entry.entry_id}_supply_{slugify(self._med)}"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, entry.entry_id)},

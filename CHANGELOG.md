@@ -5,9 +5,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.13.1] - 2026-06-02
+### Added
+- Minimum Home Assistant version (2024.1.0) declared in the manifest, so older cores fail fast with a clear message instead of an obscure import error.
+- Inline hint on the dose "Medications" field, explaining the separators (&, +, /, or a comma) used to track each medication individually.
+### Changed
+- All entities now use `has_entity_name`. Each entity's name is composed from its patient device (e.g. "Kaupo Needs attention") rather than repeating the patient in the name string. Friendly names display the same as before and existing entity IDs are unchanged; new installs get slightly cleaner entity IDs.
 ### Documentation
-- New "Safety & fail-safes" section in the README summarizing the integration's safety behaviour (fail-safe overdue detection, missed-dose escalation, the early-dose warning, reversible marking, restart-safe state, supply run-out protection, the Repairs misconfiguration check, and off-day alarm suppression), plus an explicit note that every guard warns rather than blocks. Added a matching "Fail-safe by design" highlight. No functional change.
+- New "Safety & fail-safes" section in the README summarizing the integration's safety behaviour (fail-safe overdue detection, missed-dose escalation, the early-dose warning, reversible marking, restart-safe state, supply run-out protection, the Repairs misconfiguration check, and off-day alarm suppression), plus a "Fail-safe by design" highlight. No functional change.
 
 ## [0.13.0] - 2026-06-02
 ### Added

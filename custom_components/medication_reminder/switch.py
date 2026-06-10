@@ -45,6 +45,7 @@ from .const import (
     DOMAIN,
     EVENT_DOSE_GIVEN,
     EVENT_DOSE_UNDONE,
+    SCHEDULE_PRN,
     SCHEDULE_WEEKDAYS,
     is_due,
 )
@@ -150,8 +151,12 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
         self._month_days = dose.get(CONF_MONTH_DAYS) or list(DEFAULT_MONTH_DAYS)
         # When the dose was last marked given (ISO), persisted across restarts.
         self._given_at: str | None = None
-        # Display time per the chosen format, with the medications inline.
-        self._attr_name = f"{self._format_time(self._time)} ({self._meds})"
+        # Name: as-needed (PRN) doses have no meaningful time, so name them by
+        # the medication; scheduled doses lead with their display time.
+        if self._schedule_type == SCHEDULE_PRN:
+            self._attr_name = f"{self._meds} (as needed)"
+        else:
+            self._attr_name = f"{self._format_time(self._time)} ({self._meds})"
         self._attr_unique_id = (
             f"{entry.entry_id}_{slugify(self._time + '_' + self._meds)}"
         )

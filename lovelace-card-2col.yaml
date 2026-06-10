@@ -197,6 +197,10 @@ cards:
               {%- else %}
               {%- set cadence = 'Daily' if days|length == 7 else (week | select('in', days) | map('capitalize') | join(', ')) %}
               {%- endif %}
+              {%- if stype == 'prn' %}
+              - {{ d.attributes.medications }} ({{ cadence }})
+              {%- else %}
               - **{{ as_timestamp(today_at(d.attributes.dose_time)) | timestamp_custom(fmt) }}** {{ d.attributes.medications }} ({{ cadence }})
+              {%- endif %}
               {%- endfor %}
               {% endfor %}

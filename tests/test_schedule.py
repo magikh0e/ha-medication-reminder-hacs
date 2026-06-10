@@ -160,6 +160,45 @@ def test_dpw_prn_is_zero():
     assert doses_per_week(PRN) == 0.0
 
 
+# --- Monthly (day-of-month) ------------------------------------------------
+
+def test_monthly_due_on_chosen_days():
+    m = {"schedule_type": "monthly", "month_days": [1, 15]}
+    assert is_due(m, date(2026, 6, 1)) is True
+    assert is_due(m, date(2026, 6, 15)) is True
+
+
+def test_monthly_not_due_other_days():
+    m = {"schedule_type": "monthly", "month_days": [1, 15]}
+    assert is_due(m, date(2026, 6, 2)) is False
+    assert is_due(m, date(2026, 6, 16)) is False
+
+
+def test_monthly_default_is_first():
+    m = {"schedule_type": "monthly"}
+    assert is_due(m, date(2026, 6, 1)) is True
+    assert is_due(m, date(2026, 6, 2)) is False
+
+
+def test_monthly_clamps_to_last_day_in_short_month():
+    # 31st requested; Feb 2026 has 28 days, so it fires on the 28th instead.
+    m = {"schedule_type": "monthly", "month_days": [31]}
+    assert is_due(m, date(2026, 2, 28)) is True
+    assert is_due(m, date(2026, 2, 27)) is False
+
+
+def test_monthly_not_clamped_in_long_month():
+    # In a 31-day month the 31st stays the 31st.
+    m = {"schedule_type": "monthly", "month_days": [31]}
+    assert is_due(m, date(2026, 1, 31)) is True
+    assert is_due(m, date(2026, 1, 28)) is False
+
+
+def test_dpw_monthly():
+    m = {"schedule_type": "monthly", "month_days": [1, 15]}
+    assert abs(doses_per_week(m) - (2 * 12.0 / 52.0)) < 1e-9
+
+
 # --- doses_per_week (run-out estimate cadence) -----------------------------
 
 def test_dpw_weekdays_is_len_days():

@@ -29,7 +29,7 @@ auto-created entities? Use this.
 - **Pets and people, all in the UI.** Add patients and their dose schedule from Settings, no YAML; entities auto-create per patient and survive restarts.
 - **Glanceable, fail-safe status.** A per-patient red/green "needs attention" sensor that trips on elapsed time alone and fails safe toward "problem", wire it to a panel, light, or siren.
 - **Supply & refill tracking.** Per-medication counts that decrement as doses are given, with doses-left, a run-out estimate, a low-stock red flag at your reorder threshold, and a refill reminder.
-- **Flexible scheduling.** Each dose daily, on specific days of the week, every N days, an on/off cycle (e.g. 21 on / 7 off), or as needed (PRN, no reminders), 12h or 24h display.
+- **Flexible scheduling.** Each dose daily, on specific days of the week, every N days, an on/off cycle (e.g. 21 on / 7 off), specific days of the month, or as needed (PRN, no reminders), 12h or 24h display.
 - **Actionable reminders.** Nagging, missed-dose escalation, and a "Mark given" button from the notification, routed per patient.
 - **Zero-edit dashboard.** Auto-discovers every patient and dose, no names to maintain.
 - **Fail-safe by design.** Overdue detection trips on elapsed time alone and errs toward "problem", marking is reversible, dose state survives restarts, and every guard warns rather than blocks. See [Safety & fail-safes](#safety--fail-safes).
@@ -37,7 +37,7 @@ auto-created entities? Use this.
 ## What it does
 
 - 🖱️ **UI configuration:** add a patient, choose who to notify, then add doses (a time + the medications) from Settings. No YAML for the schedule.
-- 🗓️ **Flexible scheduling:** each dose can be daily, limited to specific days of the week (e.g. Mondays only, or Mon/Wed/Fri), every N days from a start date (e.g. every other day), or an on/off cycle (e.g. 21 days on / 7 off). It only reminds and counts on the days it is due.
+- 🗓️ **Flexible scheduling:** each dose can be daily, limited to specific days of the week (e.g. Mondays only, or Mon/Wed/Fri), every N days from a start date (e.g. every other day), an on/off cycle (e.g. 21 days on / 7 off), or on specific days of the month (e.g. the 1st, or the 1st and 15th; a day past a short month's length falls on its last day). It only reminds and counts on the days it is due.
 - 💊 **As-needed (PRN) meds:** mark a dose "as needed" and it never reminds, nags, or shows as overdue, and it stays off the next-dose sensor and calendar (no schedule). Each PRN dose gets a **"Log dose" button**, press it every time you take the med (pain meds, rescue inhalers, etc., including several times a day) and it decrements that medication's supply, so refill and run-out tracking stay accurate.
 - 📅 **Next-dose sensor and calendar:** each patient gets a `sensor.<patient>_next_dose` (timestamp of the next upcoming dose) and a `calendar.<patient>_medication` that lays the schedule out as calendar events, handy for the every-N-days and on/off-cycle schedules.
 - 👥 **Per-patient notify target:** pick the person or group to remind for each patient in the UI (e.g. one dog's reminders to you, another's to a partner).
@@ -344,7 +344,7 @@ max-per-day cap) is on the [Roadmap](#roadmap).
 - Optional in-integration notifications/nagging (so YAML companions become optional).
 - HACS default-store submission once validated.
 - Over-dose guard: a minimum interval between doses and a max-per-day cap, warning before a dose is marked given too soon or too often. An early-dose warning (a dose given before its scheduled time) shipped in 0.10.0 as a first step; the interval and daily cap remain. (Idea from community member IOT7712.)
-- More schedule types beyond day-of-week. Every-N-days shipped in 0.11.0, on/off cycles (e.g. 21 on / 7 off) in 0.12.0, and as-needed (PRN, no schedule) in 0.14.0. Day-of-month / monthly remains. (Suggested by a community member.)
+- More schedule types beyond day-of-week, all shipped: every-N-days (0.11.0), on/off cycles e.g. 21 on / 7 off (0.12.0), as-needed PRN (0.14.0), and day-of-month / monthly (0.15.0). (Suggested by community members.)
 - Edit an existing dose in place (e.g. fix its time) without removing and re-adding it. (Suggested by a community member.)
 - Per-medication detail: optional strength/mg, a dosage summary (e.g. "2 tablets twice a day"), and a full name separate from the short reminder name, plus a "current medications" summary view for handing a provider the "what" rather than the "when". (Suggested by a community member.)
 

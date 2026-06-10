@@ -183,6 +183,8 @@ cards:
       {%- set cadence = (d.attributes.cycle_on | int(21)) ~ ' on / ' ~ (d.attributes.cycle_off | int(7)) ~ ' off' %}
       {%- elif stype == 'prn' %}
       {%- set cadence = 'As needed' %}
+      {%- elif stype == 'monthly' %}
+      {%- set cadence = 'Monthly (' ~ (d.attributes.month_days | join(', ')) ~ ')' %}
       {%- else %}
       {%- set cadence = 'Daily' if days|length == 7 else (week | select('in', days) | map('capitalize') | join(', ')) %}
       {%- endif %}

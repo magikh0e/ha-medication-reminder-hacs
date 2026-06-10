@@ -5,6 +5,10 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2026-06-09
+### Added
+- New **monthly (day-of-month)** dose schedule type: a dose fires on one or more chosen days of the month (e.g. the 1st, or the 1st and 15th). A chosen day past a given month's length (the 31st in February) clamps to that month's last day, so a monthly dose is never silently skipped. It works with the next-dose sensor, calendar, supply run-out estimate, and dashboards like the other schedule types.
+
 ## [0.14.0] - 2026-06-09
 ### Added
 - New **"As needed (PRN)"** dose schedule type, for medications taken only when needed (pain meds, rescue inhalers, etc.). A PRN dose never reminds, nags, or shows as overdue, and stays off the next-dose sensor and calendar.

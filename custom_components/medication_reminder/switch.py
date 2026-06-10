@@ -22,6 +22,7 @@ from .const import (
     CONF_DOSES,
     CONF_INTERVAL_DAYS,
     CONF_MEDS,
+    CONF_MONTH_DAYS,
     CONF_NAG_INTERVAL,
     CONF_NAG_MINUTES,
     CONF_NOTIFY,
@@ -35,6 +36,7 @@ from .const import (
     DEFAULT_CYCLE_ON,
     DEFAULT_DAYS,
     DEFAULT_INTERVAL_DAYS,
+    DEFAULT_MONTH_DAYS,
     DEFAULT_NAG_INTERVAL,
     DEFAULT_NAG_MINUTES,
     DEFAULT_PATIENT_TYPE,
@@ -145,6 +147,7 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
         _off = dose.get(CONF_CYCLE_OFF)
         self._cycle_off = int(_off if _off is not None else DEFAULT_CYCLE_OFF)
         self._anchor_date = dose.get(CONF_ANCHOR_DATE) or ""
+        self._month_days = dose.get(CONF_MONTH_DAYS) or list(DEFAULT_MONTH_DAYS)
         # When the dose was last marked given (ISO), persisted across restarts.
         self._given_at: str | None = None
         # Display time per the chosen format, with the medications inline.
@@ -181,6 +184,7 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
             CONF_ANCHOR_DATE: self._anchor_date,
             CONF_CYCLE_ON: self._cycle_on,
             CONF_CYCLE_OFF: self._cycle_off,
+            CONF_MONTH_DAYS: self._month_days,
         }
 
     def _scheduled_today(self) -> bool:
@@ -201,6 +205,7 @@ class MedicationDoseSwitch(SwitchEntity, RestoreEntity):
             "anchor_date": self._anchor_date,
             "cycle_on": self._cycle_on,
             "cycle_off": self._cycle_off,
+            "month_days": self._month_days,
             "scheduled_today": self._scheduled_today(),
             "notify_service": self._notify,
             "nag_minutes": self._nag_minutes,

@@ -19,6 +19,7 @@ from .const import (
     CONF_DOSES,
     CONF_INTERVAL_DAYS,
     CONF_MEDS,
+    CONF_MONTH_DAYS,
     CONF_NAG_INTERVAL,
     CONF_NAG_MINUTES,
     CONF_NOTIFY,
@@ -38,6 +39,7 @@ from .const import (
     DEFAULT_CYCLE_ON,
     DEFAULT_DAYS,
     DEFAULT_INTERVAL_DAYS,
+    DEFAULT_MONTH_DAYS,
     DEFAULT_NAG_INTERVAL,
     DEFAULT_NAG_MINUTES,
     DEFAULT_PATIENT_TYPE,
@@ -51,6 +53,7 @@ from .const import (
     DOMAIN,
     SCHEDULE_CYCLE,
     SCHEDULE_INTERVAL,
+    SCHEDULE_MONTHLY,
     SCHEDULE_PRN,
 )
 
@@ -124,8 +127,24 @@ def _schedule_type_selector() -> selector.SelectSelector:
                 {"value": "weekdays", "label": "On chosen days of the week"},
                 {"value": "interval", "label": "Every N days"},
                 {"value": "cycle", "label": "On/off cycle (X days on, Y days off)"},
+                {"value": "monthly", "label": "Monthly (on chosen days of the month)"},
                 {"value": "prn", "label": "As needed (PRN) - no schedule, no reminders"},
             ],
+            mode=selector.SelectSelectorMode.DROPDOWN,
+        )
+    )
+
+
+def _month_days_selector() -> selector.SelectSelector:
+    """Multi-select of days of the month (1-31) for a monthly schedule.
+
+    A day past a given month's length (e.g. 31 in February) is clamped to the
+    last day at scheduling time, so a monthly dose is never skipped.
+    """
+    return selector.SelectSelector(
+        selector.SelectSelectorConfig(
+            options=[{"value": str(d), "label": str(d)} for d in range(1, 32)],
+            multiple=True,
             mode=selector.SelectSelectorMode.DROPDOWN,
         )
     )
@@ -258,8 +277,8 @@ class MedicationReminderOptionsFlow(config_entries.OptionsFlow):
         Schedule type "weekdays" uses the days picker (the default, unchanged
         behaviour); "interval" uses every-N-days from a start date; "cycle"
         uses X days on / Y days off from a start date; "prn" is as-needed with
-        no schedule (never reminds, logged manually). The fields for the other
-        types are simply ignored on save.
+        no schedule (never reminds, logged manually); "monthly" fires on chosen
+        days of the month. The fields for the other types are ignored on save.
         """
         if user_input is not None:
             options = dict(self._entry.options)
@@ -291,6 +310,12 @@ class MedicationReminderOptionsFlow(config_entries.OptionsFlow):
                     or dt_util.now().date().isoformat()
                 )[:10]
                 dose[CONF_DAYS] = list(DEFAULT_DAYS)
+            elif stype == SCHEDULE_MONTHLY:
+                dose[CONF_MONTH_DAYS] = [
+                    int(d)
+                    for d in (user_input.get(CONF_MONTH_DAYS) or DEFAULT_MONTH_DAYS)
+                ]
+                dose[CONF_DAYS] = list(DEFAULT_DAYS)
             elif stype == SCHEDULE_PRN:
                 # As needed: no schedule fields. days are ignored by is_due()
                 # for PRN, but keep the key present for a uniform dose shape.
@@ -320,6 +345,10 @@ class MedicationReminderOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(
                     CONF_ANCHOR_DATE, default=dt_util.now().date().isoformat()
                 ): selector.DateSelector(),
+                vol.Optional(
+                    CONF_MONTH_DAYS,
+                    default=[str(d) for d in DEFAULT_MONTH_DAYS],
+                ): _month_days_selector(),
             }
         )
         return self.async_show_form(step_id="add_dose", data_schema=schema)

@@ -1,5 +1,6 @@
 """Constants for the Medication Reminder integration."""
 
+import calendar
 import re
 from datetime import date
 
@@ -30,6 +31,7 @@ CONF_INTERVAL_DAYS = "interval_days"
 CONF_ANCHOR_DATE = "anchor_date"
 CONF_CYCLE_ON = "cycle_on"
 CONF_CYCLE_OFF = "cycle_off"
+CONF_MONTH_DAYS = "month_days"
 
 # Supply / refill tracking (per medication).
 CONF_SUPPLIES = "supplies"
@@ -50,10 +52,12 @@ SCHEDULE_WEEKDAYS = "weekdays"  # on chosen days of the week (default)
 SCHEDULE_INTERVAL = "interval"  # every N days from an anchor date
 SCHEDULE_CYCLE = "cycle"  # X days on / Y days off from an anchor date
 SCHEDULE_PRN = "prn"  # as-needed: no schedule, no reminders, log manually when taken
+SCHEDULE_MONTHLY = "monthly"  # on chosen day(s) of the month (clamped to last day)
 DEFAULT_SCHEDULE_TYPE = SCHEDULE_WEEKDAYS
 DEFAULT_INTERVAL_DAYS = 2
 DEFAULT_CYCLE_ON = 21
 DEFAULT_CYCLE_OFF = 7
+DEFAULT_MONTH_DAYS = [1]
 DEFAULT_RESET_TIME = "00:01:00"
 DEFAULT_NAG_MINUTES = 45
 DEFAULT_NAG_INTERVAL = 15
@@ -126,6 +130,24 @@ def _cycle_days(data):
     return _n(CONF_CYCLE_ON, DEFAULT_CYCLE_ON, 1), _n(CONF_CYCLE_OFF, DEFAULT_CYCLE_OFF, 0)
 
 
+def _month_days(data):
+    """The chosen days-of-month (each kept to 1..31). Defaults to the 1st."""
+    out = []
+    for v in data.get(CONF_MONTH_DAYS) or DEFAULT_MONTH_DAYS:
+        try:
+            d = int(v)
+        except (TypeError, ValueError):
+            continue
+        if 1 <= d <= 31:
+            out.append(d)
+    return out or list(DEFAULT_MONTH_DAYS)
+
+
+def _last_day_of_month(on_date):
+    """How many days are in on_date's month (28..31)."""
+    return calendar.monthrange(on_date.year, on_date.month)[1]
+
+
 def is_due(data, on_date):
     """Whether a dose is scheduled on `on_date` (a datetime.date).
 
@@ -157,6 +179,12 @@ def is_due(data, on_date):
         if on_date < anchor:
             return False
         return (on_date - anchor).days % period < on_days
+    if stype == SCHEDULE_MONTHLY:
+        last = _last_day_of_month(on_date)
+        # Clamp each chosen day to the month's last day, so a dose set for the
+        # 31st still fires in shorter months instead of being skipped.
+        due = {min(d, last) for d in _month_days(data)}
+        return on_date.day in due
     days = data.get(CONF_DAYS) or WEEKDAYS
     return WEEKDAYS[on_date.weekday()] in days
 
@@ -172,5 +200,8 @@ def doses_per_week(data):
     if stype == SCHEDULE_CYCLE:
         on_days, off_days = _cycle_days(data)
         return 7.0 * on_days / (on_days + off_days)
+    if stype == SCHEDULE_MONTHLY:
+        # len(days) doses per month, averaged over a 12-month / 52-week year.
+        return len(_month_days(data)) * 12.0 / 52.0
     days = data.get(CONF_DAYS) or WEEKDAYS
     return float(len(days))

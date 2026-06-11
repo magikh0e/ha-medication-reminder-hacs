@@ -174,6 +174,14 @@ view section: add a section, set its width to 2, and paste it as a manual card.
 
 *The auto-discovering single-column layout ([`lovelace-card.yaml`](lovelace-card.yaml)); the wide two-column variant is described just above.*
 
+![Today summary card](DosingStatus.png)
+
+*The today summary: doses given vs. still due, what is overdue or upcoming, and the times already-given doses were taken.*
+
+![As needed (PRN) card](PRN-card.png)
+
+*The As needed (PRN) card: a Log dose button per as-needed med, with its last-taken time and doses-today count.*
+
 ### Status panel (red/green, glanceable)
 
 A simple "all OK / attention needed" panel for the top of a dashboard, driven by
@@ -273,6 +281,10 @@ The reset time is applied by the integration; the nag window/interval are expose
 as switch attributes that the companion automations read.
 
 ## Supply & refill tracking
+
+![Supplies on hand](Supplies.png)
+
+*The supplies-on-hand card; a medication at or below its threshold turns red.*
 
 Optionally track how much of each medication you have on hand. In **Configure,
 Track a medication supply**, set the medication name (exactly as it appears in the

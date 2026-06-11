@@ -5,6 +5,10 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Fixed
+- Dashboards: the status banner no longer throws a template error when another integration also exposes a `*_needs_attention` sensor (e.g. a plant monitor). The medication banner now only counts sensors that carry a `patient` attribute. Re-copy `lovelace-card.yaml` or `lovelace-card-2col.yaml` to pick this up.
+
 ## [0.17.0] - 2026-06-10
 ### Added
 - As-needed (PRN) doses now record **when they were last taken**. Each PRN dose gains a `sensor.<patient>_<med>_last_taken` (device class `timestamp`) that updates every time the dose is logged and survives restarts, so you can see how long it has been since the last one.

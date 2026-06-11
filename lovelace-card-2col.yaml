@@ -28,9 +28,9 @@ cards:
   - type: markdown
     card_mod:
       style: |
-        ha-card { background: {% if (states.binary_sensor | selectattr('entity_id','search','_needs_attention') | selectattr('state','eq','on') | list | length) > 0 %}rgba(244, 67, 54, 0.15){% else %}rgba(76, 175, 80, 0.12){% endif %} !important; }
+        ha-card { background: {% if (states.binary_sensor | selectattr('entity_id','search','_needs_attention') | selectattr('attributes.patient','defined') | selectattr('state','eq','on') | list | length) > 0 %}rgba(244, 67, 54, 0.15){% else %}rgba(76, 175, 80, 0.12){% endif %} !important; }
     content: |-
-      {% set s = states.binary_sensor | selectattr('entity_id','search','_needs_attention') | list %}
+      {% set s = states.binary_sensor | selectattr('entity_id','search','_needs_attention') | selectattr('attributes.patient','defined') | list %}
       {% set red = s | selectattr('state','eq','on') | list %}
       {% if red | length == 0 %}
       # 🟢 All caught up

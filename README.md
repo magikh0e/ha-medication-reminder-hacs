@@ -44,14 +44,14 @@ auto-created entities? Use this.
 - 🔀 **Auto-created entities:** each dose becomes a `switch` (on = given today), grouped under a device per patient.
 - ♻️ **Daily reset:** every dose flips back to "not given" at 00:01.
 - 💾 **Restart-safe:** dose state survives Home Assistant restarts.
-- 🔔 **Reminders via companion automations:** the included `companion-automations.yaml` reads the dose switches and sends actionable, nagging, missed-dose notifications (this v0.1 keeps notifications in YAML so you reuse proven logic).
+- 🔔 **Reminders via companion automations:** the included `companion-automations.yaml` reads the dose switches and sends actionable, nagging, missed-dose notifications (the current version keeps notifications in YAML so you reuse proven logic).
 - 📦 **Supply & refill tracking (optional):** track how many doses of a medication you have on hand. It counts down as doses are marked given, shows doses left and an estimated run-out date, flags low stock red at your threshold, and can send a refill reminder.
 - ⏰ **Early-dose warning (optional):** if a dose is marked given well before its scheduled time, a companion automation warns the caretaker, with an "undo" button to un-mark it if it was a mistake. A soft over-dose guard that flags likely slips without blocking you.
 
 ## Why entities + YAML (not all-in-one, yet)
 
-v0.1 deliberately keeps the *notification* logic in battle-tested YAML
-automations and lets the integration own the *config UI* and *entities*. That
+The current versions deliberately keep the *notification* logic in battle-tested
+YAML automations while the integration owns the *config UI* and *entities*. That
 gives you the big win (no more hand-declared helpers, UI-managed schedule)
 without putting medication-critical notification code into brand-new, untested
 territory. A future version may move reminders into the integration itself.
@@ -96,7 +96,7 @@ one automation.
 
 1. **Settings, Devices & Services, Add Integration, Medication Reminder.**
 2. Enter the patient name (e.g. a pet or person), pick the **patient type** (Person / Dog / Cat / ..., which sets the icon), and the **notify target** (the person or group to remind). One patient per entry; add the integration again for more patients.
-3. On the entry, click **Configure** to **Add a dose** (pick a time, type the medications, and choose the **days of the week** it applies to - all days = daily). Repeat for each dose. **Remove a dose** or open **Reminder settings** (type, notify target, time format, reset time, nag window/interval) there too.
+3. On the entry, click **Configure** to **Add a dose** (pick a time, type the medications, and choose the **schedule**: days of the week - all days = daily - or every N days, an on/off cycle, specific days of the month, or as-needed/PRN). Repeat for each dose. **Remove a dose** or open **Reminder settings** (type, notify target, time format, reset time, nag window/interval) there too.
 
 Each dose appears as `switch.<patient>_<time>` with attributes `patient`,
 `dose_time`, `medications`, and `notify_service`.
@@ -149,13 +149,14 @@ They send a reminder when a dose is due and not given, nag every 15 minutes for
 The bundled [`lovelace-card.yaml`](lovelace-card.yaml) is an auto-discovering,
 day-of-week-aware dashboard that needs **no editing**: it finds every patient and
 dose automatically, so adding, renaming, or removing a patient just updates it.
-Five parts:
+Six parts:
 
 1. a red/green status panel (from the `needs_attention` sensors),
 2. a summary of **today's** scheduled doses (given / still to give, with times),
 3. one combined "Mark given" card with every dose due today (tap to mark),
-4. one combined supplies card (units on hand, shown only if you track supplies),
-5. a per-patient schedule overview (every dose, time, medications, and days).
+4. an "As needed (PRN)" card with a Log dose button per as-needed med and its "last taken" time,
+5. one combined supplies card (units on hand, shown only if you track supplies),
+6. a per-patient schedule overview (every dose, time, medications, and days).
 
 It needs two HACS cards: [auto-entities](https://github.com/thomasloven/lovelace-auto-entities)
 (the auto-discovering lists) and [card-mod](https://github.com/thomasloven/lovelace-card-mod)
@@ -184,7 +185,7 @@ what) when something needs investigating. Native card, no HACS needed:
 ```yaml
 type: markdown
 content: |-
-  {% set s = states.binary_sensor | selectattr('entity_id','search','_needs_attention') | list %}
+  {% set s = states.binary_sensor | selectattr('entity_id','search','_needs_attention') | selectattr('attributes.patient','defined') | list %}
   {% set red = s | selectattr('state','eq','on') | list %}
   {% if red | length == 0 %}
   # 🟢 All OK
@@ -207,7 +208,7 @@ the markdown card above:
 card_mod:
   style: |
     ha-card {
-      {% if (states.binary_sensor | selectattr('entity_id','search','_needs_attention') | selectattr('state','eq','on') | list | length) > 0 %}
+      {% if (states.binary_sensor | selectattr('entity_id','search','_needs_attention') | selectattr('attributes.patient','defined') | selectattr('state','eq','on') | list | length) > 0 %}
       animation: mr-flash 1.2s ease-in-out infinite;
       {% endif %}
     }
@@ -249,7 +250,7 @@ content: |-
 
 ## How marking works (the contract)
 
-- The integration publishes `switch.*` entities carrying `patient` / `patient_type` / `dose_time` / `medications` / `days` / `schedule_type` / `interval_days` / `anchor_date` / `cycle_on` / `cycle_off` / `scheduled_today` / `given_at` / `notify_service` attributes (a dose is only reminded, counted, or flagged overdue when `scheduled_today` is true, which respects day-of-week, every-N-days, and on/off-cycle schedules). Per patient it also publishes two binary sensors:
+- The integration publishes `switch.*` entities carrying `patient` / `patient_type` / `dose_time` / `medications` / `days` / `schedule_type` / `interval_days` / `anchor_date` / `cycle_on` / `cycle_off` / `month_days` / `scheduled_today` / `given_at` / `notify_service` attributes (a dose is only reminded, counted, or flagged overdue when `scheduled_today` is true, which respects day-of-week, every-N-days, on/off-cycle, and monthly schedules). Per patient it also publishes two binary sensors:
   - `binary_sensor.<patient>_all_doses_given` (patient-type icon) - on when all of that patient's doses are given today, with `total` / `given` / `remaining` / `pending` attributes.
   - `binary_sensor.<patient>_needs_attention` (device class `problem`) - **red when a dose is overdue** (past its time by the nag window and still not given), green when all is well. It re-evaluates on a 60-second timer so it trips on elapsed time alone, and fails safe toward "problem". Attributes: `overdue` / `overdue_count`.
 - It also publishes `sensor.<patient>_next_dose` (timestamp of the next upcoming dose, with the medications as an attribute) and `calendar.<patient>_medication` (the schedule as calendar events). The entry offers **downloadable diagnostics** on its device page, and raises a **Repairs** warning if a tracked supply's medication matches no dose (so it would never decrement).

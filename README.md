@@ -240,6 +240,46 @@ content: |-
   {% endfor %}
 ```
 
+### Filtering to one patient or group
+
+Every dose, supply, and status entity carries a `patient` attribute, so any card
+can be scoped to a single patient or a group by filtering on it, handy for a
+per-person or per-room overview.
+
+In the markdown cards (status panel, today summary, schedule overview), add a
+patient filter where the entity list is built:
+
+```yaml
+{% set meds = states.switch | selectattr('attributes.medications','defined')
+   | selectattr('attributes.patient','eq','Person A') | list %}
+```
+
+For a group, pass a list of names instead:
+
+```yaml
+| selectattr('attributes.patient','in',['Whiskers','Mittens','Felix'])
+```
+
+In the auto-entities cards (Mark given, Supplies), add the same check inside the
+template's `if` (Supplies is identical on `states.number`):
+
+```yaml
+{% for s in states.switch if s.attributes.medications is defined
+   and s.attributes.patient == 'Person A' %}
+```
+
+The only entities without a `patient` attribute are the Log dose and refill
+**buttons**, so on the As-needed (PRN) card filter those by entity_id, which
+starts with the patient's name (lowercased, spaces become underscores):
+
+```yaml
+{% for s in states.button if 'Log ' in s.name and s.name.endswith('dose')
+   and s.entity_id.startswith('button.person_a_') %}
+```
+
+The "last taken" and "doses today" sensors on that card do carry `patient`, so
+they keep using the `selectattr` form like the rest.
+
 ## Settings (per patient)
 
 Each patient has its own **Configure, Reminder settings** with:

@@ -47,7 +47,7 @@
           "anchor_date": "Start date (for the interval or cycle option)"
         },
         "data_description": {
-          "meds": "Separate multiple medications with &, +, /, or a comma."
+          "meds": "Separate multiple medications with &, +, or a comma. A slash only splits with spaces around it, so a name like 'Carbimazol 5mg (1/2)' stays whole."
         }
       },
       "remove_dose": {

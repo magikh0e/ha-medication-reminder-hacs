@@ -86,11 +86,13 @@ def split_medications(meds):
     """Split a dose 'meds' string into individual medication names.
 
     A single dose can list several meds at once (e.g. "Keppra & Phenobarbital").
-    Recognised separators: & , + /.
+    Separators: &, +, a comma, or a slash surrounded by spaces (" / "). A bare
+    slash is kept as part of the name, so combo drugs and fractional doses such
+    as "Carbimazol 5mg (1/2)", "TMP/SMX", or "5mg/ml" are not split apart.
     """
     if not meds:
         return []
-    return [p.strip() for p in re.split(r"[&,+/]", str(meds)) if p.strip()]
+    return [p.strip() for p in re.split(r"[&,+]|\s+/\s+", str(meds)) if p.strip()]
 
 
 def meds_contains(meds, med_name):

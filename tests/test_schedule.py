@@ -224,6 +224,21 @@ def test_split_medications_separators():
     assert split_medications("Med A, Med B + Med C / Med D") == ["Med A", "Med B", "Med C", "Med D"]
 
 
+def test_split_medications_slash_in_name_is_kept_whole():
+    # A bare slash is part of the name (combo drugs, fractional doses), not a
+    # separator, so the medication is tracked as one.
+    assert split_medications("Carbimazol 5mg (1/2)") == ["Carbimazol 5mg (1/2)"]
+    assert split_medications("TMP/SMX") == ["TMP/SMX"]
+    assert split_medications("Lisinopril/HCTZ") == ["Lisinopril/HCTZ"]
+    # A slash with spaces around it still separates two meds.
+    assert split_medications("Aspirin / Warfarin") == ["Aspirin", "Warfarin"]
+
+
+def test_meds_contains_slash_in_name_matches_supply():
+    # The reported bug: a supply named with a slash now matches its dose.
+    assert meds_contains("Carbimazol 5mg (1/2)", "Carbimazol 5mg (1/2)") is True
+
+
 def test_split_medications_empty():
     assert split_medications("") == []
     assert split_medications(None) == []

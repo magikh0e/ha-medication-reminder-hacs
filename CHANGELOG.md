@@ -5,7 +5,9 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.18.1] - 2026-06-14
+### Fixed
+- A tracked supply whose medication name contains a slash (combo drugs and fractional doses such as `Carbimazol 5mg (1/2)`, `TMP/SMX`, or `Lisinopril/HCTZ`) no longer warns "no matching dose" and now decrements correctly. Medication strings are split into separate meds only on `&`, `+`, a comma, or a slash with spaces around it; a bare slash is kept as part of the name. (Reported by a community member.)
 ### Changed
 - Dashboards: the schedule overview now lists each patient's timed doses first (sorted by time) and groups as-needed (PRN) doses at the bottom of their block, instead of the as-needed ones floating to the top. Re-copy `lovelace-card.yaml` or `lovelace-card-2col.yaml` to pick this up. (Suggested by a community member.)
 

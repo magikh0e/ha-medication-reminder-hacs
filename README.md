@@ -293,9 +293,12 @@ amount. Each tracked medication then gets:
   medications are short.
 
 A medication shared across several doses (e.g. one given morning and night) draws
-from a single pool; dose `meds` strings are split on `& , + /` so each medication
-is tracked individually. The companion `med_supply_low` automation sends a
-once-a-day refill reminder to the patient's notify target for anything low.
+from a single pool; dose `meds` strings are split on `&`, `+`, a comma, or a
+slash with spaces around it (` / `) so each medication is tracked individually. A
+bare slash is kept as part of the name, so combo drugs and fractional doses like
+`Carbimazol 5mg (1/2)`, `TMP/SMX`, or `5mg/ml` are not split apart. The companion
+`med_supply_low` automation sends a once-a-day refill reminder to the patient's
+notify target for anything low.
 
 ## How marking works (the contract)
 

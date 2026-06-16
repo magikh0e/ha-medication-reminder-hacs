@@ -5,6 +5,10 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.2] - 2026-06-15
+### Added
+- Brand icon bundled with the integration (`custom_components/medication_reminder/brand/icon.png` and `icon@2x.png`), so the Medication Reminder logo shows on the HACS card and in Settings, Devices & Services. Home Assistant 2026.3 and later loads brand images directly from the integration, so no entry in the home-assistant/brands repository is needed; on older versions there is no change.
+
 ## [0.18.1] - 2026-06-14
 ### Fixed
 - A tracked supply whose medication name contains a slash (combo drugs and fractional doses such as `Carbimazol 5mg (1/2)`, `TMP/SMX`, or `Lisinopril/HCTZ`) no longer warns "no matching dose" and now decrements correctly. Medication strings are split into separate meds only on `&`, `+`, a comma, or a slash with spaces around it; a bare slash is kept as part of the name. (Reported by a community member.)

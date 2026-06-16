@@ -51,6 +51,16 @@ CONF_SUPPLY_PER_DOSE = "supply_per_dose"
 CONF_SUPPLY_THRESHOLD = "supply_threshold"
 CONF_SUPPLY_REFILL_TO = "supply_refill_to"
 
+# Per-medication reference detail (optional), kept separate from the short dose
+# name. Keyed by the medication name as it appears in a dose's meds string.
+CONF_MEDICATIONS = "medications"
+CONF_MED_NAME = "med_name"
+CONF_MED_FULL_NAME = "full_name"
+CONF_MED_STRENGTH = "strength"
+CONF_MED_BRAND = "brand"
+CONF_MED_PRESCRIBED_FOR = "prescribed_for"
+CONF_MED_DOSAGE = "dosage"
+
 # Weekday codes, indexed by Python datetime.weekday() (Mon=0 .. Sun=6).
 WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
@@ -254,3 +264,53 @@ def dose_too_soon(last_taken, min_interval_hours, now):
 def dose_over_cap(doses_today, max_per_day):
     """Whether the daily cap has already been reached."""
     return bool(max_per_day and doses_today >= max_per_day)
+
+
+def medication_summary_line(med):
+    """A single human-readable line for a current-medications entry.
+
+    `med` is one dict from current_medications(). Includes only the fields that
+    are filled, e.g. "Ibuprofen (Advil) 200mg, for pain, 1 tablet as needed".
+    """
+    name = med.get("full_name") or med.get("name") or ""
+    if med.get("brand"):
+        name = f"{name} ({med['brand']})"
+    if med.get("strength"):
+        name = f"{name} {med['strength']}"
+    parts = [name]
+    if med.get("prescribed_for"):
+        parts.append(f"for {med['prescribed_for']}")
+    if med.get("dosage"):
+        parts.append(med["dosage"])
+    return ", ".join(parts)
+
+
+def current_medications(doses, details):
+    """Every distinct medication across `doses`, enriched with detail records.
+
+    `doses` is the list of dose dicts; `details` is the per-medication detail
+    list (each a mapping with `med_name` plus optional fields). Returns a list
+    of dicts (name, full_name, strength, brand, prescribed_for, dosage), one per
+    medication the patient actually takes, sorted by name.
+    """
+    by_name = {}
+    for d in details or []:
+        name = str(d.get(CONF_MED_NAME, "")).strip()
+        if name:
+            by_name[name.lower()] = d
+    seen = {}
+    for dose in doses or []:
+        for med in split_medications(dose.get(CONF_MEDS)):
+            key = med.lower()
+            if key in seen:
+                continue
+            det = by_name.get(key, {})
+            seen[key] = {
+                "name": med,
+                "full_name": str(det.get(CONF_MED_FULL_NAME) or "").strip(),
+                "strength": str(det.get(CONF_MED_STRENGTH) or "").strip(),
+                "brand": str(det.get(CONF_MED_BRAND) or "").strip(),
+                "prescribed_for": str(det.get(CONF_MED_PRESCRIBED_FOR) or "").strip(),
+                "dosage": str(det.get(CONF_MED_DOSAGE) or "").strip(),
+            }
+    return [seen[k] for k in sorted(seen)]

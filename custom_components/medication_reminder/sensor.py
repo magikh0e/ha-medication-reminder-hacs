@@ -30,6 +30,7 @@ from homeassistant.util import slugify
 
 from .const import (
     CONF_DOSES,
+    CONF_MEDICATIONS,
     CONF_MEDS,
     CONF_PATIENT,
     CONF_RESET_TIME,
@@ -39,7 +40,9 @@ from .const import (
     DOMAIN,
     EVENT_DOSE_LOGGED,
     SCHEDULE_PRN,
+    current_medications,
     is_due,
+    medication_summary_line,
 )
 
 # Re-evaluate this often so "next dose" rolls forward as time passes.
@@ -57,7 +60,10 @@ async def async_setup_entry(
     patient: str = entry.data[CONF_PATIENT]
     doses: list[dict[str, Any]] = entry.options.get(CONF_DOSES, [])
     reset_time: str = entry.options.get(CONF_RESET_TIME, DEFAULT_RESET_TIME)
-    entities: list[SensorEntity] = [MedicationNextDoseSensor(entry, patient)]
+    entities: list[SensorEntity] = [
+        MedicationNextDoseSensor(entry, patient),
+        MedicationsSensor(entry, patient),
+    ]
     for dose in doses:
         if (dose.get(CONF_SCHEDULE_TYPE) or "") != SCHEDULE_PRN:
             continue
@@ -300,3 +306,44 @@ class MedicationDosesTodaySensor(RestoreSensor):
         self._period = self._period_key()
         self._count = 0
         self.async_write_ha_state()
+
+
+class MedicationsSensor(SensorEntity):
+    """A current-medications summary for one patient.
+
+    Lists every medication the patient takes (gathered from their doses),
+    enriched with any reference detail (full name, strength, brand,
+    prescribed-for, dosage). The state is the count of distinct medications; the
+    `medications` attribute holds the detail and `summary` is a ready-to-share
+    text block for handing to a provider.
+    """
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:clipboard-text-outline"
+
+    def __init__(self, entry: ConfigEntry, patient: str) -> None:
+        self._patient = patient
+        self._meds = current_medications(
+            entry.options.get(CONF_DOSES, []),
+            entry.options.get(CONF_MEDICATIONS, []),
+        )
+        self._attr_name = "Medications"
+        self._attr_unique_id = f"{entry.entry_id}_medications"
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, entry.entry_id)},
+            "name": patient,
+            "manufacturer": "Medication Reminder",
+        }
+
+    @property
+    def native_value(self) -> int:
+        return len(self._meds)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "patient": self._patient,
+            "medications": self._meds,
+            "summary": "\n".join(medication_summary_line(m) for m in self._meds),
+        }

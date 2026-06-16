@@ -39,6 +39,7 @@ setup with no custom integration? Use that one; otherwise use this.
 - **Glanceable, fail-safe status.** A per-patient red/green "needs attention" sensor that trips on elapsed time alone and errs toward "problem"; wire it to a panel, light, or siren.
 - **Actionable reminders.** Nagging, missed-dose escalation, and a "Mark given" button from the notification, routed to each patient's own notify target.
 - **Supply & refill tracking.** Per-medication counts that decrement as doses are given, with doses-left, a run-out estimate, a low-stock red flag at your reorder threshold, and a refill reminder.
+- **Per-medication detail.** Optional strength, brand, full name, "prescribed for", and a dosage summary per medication, plus a `medications` sensor that lists everything the patient takes for a ready-to-share "current medications" view to hand a vet or doctor.
 - **Next-dose sensor and calendar.** A `next_dose` timestamp and a read-only medication calendar per patient, handy for "remind me before" automations and seeing long cycles laid out.
 - **Zero-edit dashboard.** Auto-discovers every patient and dose, no names to maintain.
 - **Fail-safe by design.** Overdue detection trips on elapsed time alone and errs toward "problem", marking is reversible, dose state survives restarts, and every guard warns rather than blocks. See [Safety & fail-safes](#safety--fail-safes).
@@ -285,6 +286,24 @@ starts with the patient's name (lowercased, spaces become underscores):
 The "last taken" and "doses today" sensors on that card do carry `patient`, so
 they keep using the `selectattr` form like the rest.
 
+### Current medications
+
+A read-only list of every medication a patient takes, with the optional detail
+(strength, brand, what it is for, dosage), for handing to a vet or doctor. Reads
+the `medications` sensor; native markdown card, no HACS needed:
+
+```yaml
+type: markdown
+content: |-
+  ## 💊 Current medications
+  {% for s in states.sensor if s.attributes.medications is defined and s.entity_id.endswith('_medications') %}
+  ### {{ s.attributes.patient }}
+  {% for m in s.attributes.medications %}
+  - **{{ m.full_name or m.name }}**{% if m.brand %} ({{ m.brand }}){% endif %}{% if m.strength %} {{ m.strength }}{% endif %}{% if m.prescribed_for %}, for {{ m.prescribed_for }}{% endif %}{% if m.dosage %}, {{ m.dosage }}{% endif %}
+  {% endfor %}
+  {% endfor %}
+```
+
 ## Settings (per patient)
 
 Each patient has its own **Configure, Reminder settings** with:
@@ -357,6 +376,7 @@ notify target for anything low.
   - `binary_sensor.<patient>_all_doses_given` (patient-type icon) - on when all of that patient's doses are given today, with `total` / `given` / `remaining` / `pending` attributes.
   - `binary_sensor.<patient>_needs_attention` (device class `problem`) - **red when a dose is overdue** (past its time by the nag window and still not given), green when all is well. It re-evaluates on a 60-second timer so it trips on elapsed time alone, and fails safe toward "problem". Attributes: `overdue` / `overdue_count`.
 - It also publishes `sensor.<patient>_next_dose` (timestamp of the next upcoming dose, with the medications as an attribute) and `calendar.<patient>_medication` (the schedule as calendar events). The entry offers **downloadable diagnostics** on its device page, and raises a **Repairs** warning if a tracked supply's medication matches no dose (so it would never decrement).
+- `sensor.<patient>_medications` lists every medication the patient takes (gathered from their doses). Its state is the count of distinct medications; its `medications` attribute holds each one's optional detail (full name, strength, brand, prescribed-for, dosage) and its `summary` attribute is a ready-to-share "current medications" list. Add detail in **Configure, Medication detail** (it does not change the dose's short name).
 - The companion reminder automation iterates those switches and routes each reminder to its `notify_service` / `nag_minutes` / `nag_interval`, so adding a dose or changing a patient's settings in the UI needs **no** automation edits.
 - "Mark given" flips the switch on; the daily reset flips all off at the configured reset time.
 - To log a dose taken at a **different time** than now, call the `medication_reminder.mark_given` service (target the dose's switch) with a `given_at` time. The plain switch is "Take Now"; the service is the "Specify Time" equivalent. Correcting the time on an already-given dose just updates the timestamp (it does not re-warn or re-decrement supply).
@@ -415,7 +435,6 @@ territory. A future version may move reminders into the integration itself.
 
 - Optional in-integration notifications/nagging (so the YAML companion automations become optional).
 - Edit an existing dose in place (e.g. fix its time) without removing and re-adding it. (Suggested by a community member.)
-- Per-medication detail: optional strength/mg, brand, the condition it was prescribed for, a dosage summary (e.g. "2 tablets twice a day"), and a full name separate from the short reminder name, plus a "current medications" summary view for handing a provider the "what" rather than the "when". (Suggested by community members.)
 
 **Shipped from the roadmap:**
 
@@ -424,6 +443,7 @@ territory. A future version may move reminders into the integration itself.
 - Specify the time a dose was taken: the `medication_reminder.mark_given` service with `given_at` for scheduled (switch) doses (0.16.0), and `medication_reminder.log_dose` with `taken_at` for as-needed (PRN) doses (0.17.0), each updating a `<med>_last_taken` sensor. (Suggested by community members.)
 - HACS default-store submission: validated and submitted; the PR sits in the maintainer review queue, and the integration appears in the default HACS store once it merges.
 - Over-dose guard for as-needed (PRN) meds: a minimum interval between doses and a max-per-day cap, surfaced as a `<med>_dose_guard` problem sensor that warns when another dose now would be too soon or over the cap (0.19.0). Builds on the early-dose warning (0.10.0) and PRN taken-time recording (0.17.0). (Idea from community member IOT7712.)
+- Per-medication detail: optional strength/mg, brand, the condition it was prescribed for, a dosage summary, and a full name separate from the short reminder name, plus a `<patient>_medications` "current medications" view for handing a provider the "what" rather than the "when" (0.20.0). (Suggested by community members.)
 
 ## Acknowledgements
 

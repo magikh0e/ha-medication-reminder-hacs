@@ -19,6 +19,13 @@ from .const import (
     CONF_DOSES,
     CONF_INTERVAL_DAYS,
     CONF_MAX_PER_DAY,
+    CONF_MED_BRAND,
+    CONF_MED_DOSAGE,
+    CONF_MED_FULL_NAME,
+    CONF_MED_NAME,
+    CONF_MED_PRESCRIBED_FOR,
+    CONF_MED_STRENGTH,
+    CONF_MEDICATIONS,
     CONF_MEDS,
     CONF_MIN_INTERVAL_HOURS,
     CONF_MONTH_DAYS,
@@ -295,6 +302,8 @@ class MedicationReminderOptionsFlow(config_entries.OptionsFlow):
                 "remove_dose",
                 "add_supply",
                 "remove_supply",
+                "medication_detail",
+                "remove_medication",
                 "settings",
             ],
         )
@@ -473,6 +482,66 @@ class MedicationReminderOptionsFlow(config_entries.OptionsFlow):
             {vol.Optional("remove", default=[]): cv.multi_select(choices)}
         )
         return self.async_show_form(step_id="remove_supply", data_schema=schema)
+
+    async def async_step_medication_detail(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Add or update reference detail for one medication.
+
+        Optional fields (full name, strength, brand, prescribed-for, dosage) are
+        kept separate from the short dose name. Records are keyed by medication
+        name; saving one with an existing name replaces it.
+        """
+        if user_input is not None:
+            name = str(user_input[CONF_MED_NAME]).strip()
+            record = {
+                CONF_MED_NAME: name,
+                CONF_MED_FULL_NAME: str(user_input.get(CONF_MED_FULL_NAME, "")).strip(),
+                CONF_MED_STRENGTH: str(user_input.get(CONF_MED_STRENGTH, "")).strip(),
+                CONF_MED_BRAND: str(user_input.get(CONF_MED_BRAND, "")).strip(),
+                CONF_MED_PRESCRIBED_FOR: str(
+                    user_input.get(CONF_MED_PRESCRIBED_FOR, "")
+                ).strip(),
+                CONF_MED_DOSAGE: str(user_input.get(CONF_MED_DOSAGE, "")).strip(),
+            }
+            options = dict(self._entry.options)
+            meds = [
+                m
+                for m in options.get(CONF_MEDICATIONS, [])
+                if str(m.get(CONF_MED_NAME, "")).strip().lower() != name.lower()
+            ]
+            meds.append(record)
+            options[CONF_MEDICATIONS] = meds
+            return self.async_create_entry(title="", data=options)
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_MED_NAME): selector.TextSelector(),
+                vol.Optional(CONF_MED_FULL_NAME): selector.TextSelector(),
+                vol.Optional(CONF_MED_STRENGTH): selector.TextSelector(),
+                vol.Optional(CONF_MED_BRAND): selector.TextSelector(),
+                vol.Optional(CONF_MED_PRESCRIBED_FOR): selector.TextSelector(),
+                vol.Optional(CONF_MED_DOSAGE): selector.TextSelector(),
+            }
+        )
+        return self.async_show_form(step_id="medication_detail", data_schema=schema)
+
+    async def async_step_remove_medication(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Pick medications to clear the reference detail for."""
+        meds = list(self._entry.options.get(CONF_MEDICATIONS, []))
+        if user_input is not None:
+            remove = set(user_input.get("remove", []))
+            options = dict(self._entry.options)
+            options[CONF_MEDICATIONS] = [
+                m for i, m in enumerate(meds) if str(i) not in remove
+            ]
+            return self.async_create_entry(title="", data=options)
+        choices = {str(i): str(m.get(CONF_MED_NAME, "")) for i, m in enumerate(meds)}
+        schema = vol.Schema(
+            {vol.Optional("remove", default=[]): cv.multi_select(choices)}
+        )
+        return self.async_show_form(step_id="remove_medication", data_schema=schema)
 
     async def async_step_settings(
         self, user_input: dict[str, Any] | None = None

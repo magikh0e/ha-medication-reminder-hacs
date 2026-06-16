@@ -5,6 +5,10 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.0] - 2026-06-16
+### Added
+- Per-medication detail. In **Configure** you can now add reference info for a medication, kept separate from the short dose name: a full name, strength (e.g. "5mg"), brand, the condition it was prescribed for, and a dosage summary (e.g. "2 tablets twice a day"). A new `sensor.<patient>_medications` lists every medication the patient takes (gathered from their doses), enriched with that detail; its state is the count of distinct medications, and its `medications` and `summary` attributes give a ready-to-share "current medications" list to hand a vet or doctor. (Suggested by community members.)
+
 ## [0.19.0] - 2026-06-15
 ### Added
 - Over-dose guard for as-needed (PRN) doses. When you add a PRN dose you can set a **minimum number of hours between doses** and a **maximum number of doses per day** (0 for either means no limit). With at least one set, the dose gains a `binary_sensor.<patient>_<med>_dose_guard` (device class `problem`) that turns on when taking another dose right now would be too soon (within the interval since the last log) or would exceed the daily cap. It only warns, never blocks, and exposes `too_soon`, `over_cap`, `next_allowed`, `doses_today`, and `remaining_today` attributes for dashboards and automations. This is the "no less than 4 hours apart" pain-med case. (Idea from community member IOT7712.)

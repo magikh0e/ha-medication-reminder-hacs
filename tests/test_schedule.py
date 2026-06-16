@@ -28,6 +28,8 @@ dose_max_per_day = const.dose_max_per_day
 next_dose_allowed = const.next_dose_allowed
 dose_too_soon = const.dose_too_soon
 dose_over_cap = const.dose_over_cap
+current_medications = const.current_medications
+medication_summary_line = const.medication_summary_line
 
 # A known Monday, for weekday tests that don't hardcode the mapping.
 MON = date(2026, 6, 1)
@@ -304,3 +306,51 @@ def test_dose_over_cap():
     assert dose_over_cap(4, 3) is True
     assert dose_over_cap(2, 3) is False
     assert dose_over_cap(5, 0) is False  # 0 = no cap
+
+
+def test_current_medications_gathers_and_enriches():
+    doses = [
+        {"meds": "Ibuprofen & Paracetamol"},
+        {"meds": "Ibuprofen"},  # duplicate, deduped
+        {"meds": "Metformin"},
+    ]
+    details = [
+        {
+            "med_name": "Ibuprofen",
+            "brand": "Advil",
+            "strength": "200mg",
+            "prescribed_for": "pain",
+        }
+    ]
+    meds = current_medications(doses, details)
+    assert [m["name"] for m in meds] == ["Ibuprofen", "Metformin", "Paracetamol"]
+    ibu = meds[0]
+    assert ibu["brand"] == "Advil"
+    assert ibu["strength"] == "200mg"
+    assert ibu["prescribed_for"] == "pain"
+    assert meds[1]["brand"] == ""  # Metformin has no detail record
+
+
+def test_current_medications_empty():
+    assert current_medications([], []) == []
+    assert current_medications(None, None) == []
+
+
+def test_medication_summary_line():
+    med = {
+        "name": "Ibuprofen",
+        "full_name": "",
+        "brand": "Advil",
+        "strength": "200mg",
+        "prescribed_for": "pain",
+        "dosage": "1 tablet as needed",
+    }
+    assert (
+        medication_summary_line(med)
+        == "Ibuprofen (Advil) 200mg, for pain, 1 tablet as needed"
+    )
+    assert medication_summary_line({"name": "Aspirin"}) == "Aspirin"
+    assert (
+        medication_summary_line({"name": "APAP", "full_name": "Paracetamol"})
+        == "Paracetamol"
+    )

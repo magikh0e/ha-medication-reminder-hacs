@@ -30,6 +30,8 @@
           "remove_dose": "Remove a dose",
           "add_supply": "Track a medication supply",
           "remove_supply": "Remove a tracked supply",
+          "medication_detail": "Add medication detail",
+          "remove_medication": "Remove medication detail",
           "settings": "Reminder settings"
         }
       },
@@ -75,6 +77,24 @@
         "title": "Remove tracked supplies",
         "data": {
           "remove": "Supplies to stop tracking"
+        }
+      },
+      "medication_detail": {
+        "title": "Medication detail",
+        "description": "Optional reference info for a medication, kept separate from the short dose name. Use the name exactly as it appears in a dose. Saving a name that already has detail updates it.",
+        "data": {
+          "med_name": "Medication name",
+          "full_name": "Full name (optional)",
+          "strength": "Strength (e.g. 5mg)",
+          "brand": "Brand (optional)",
+          "prescribed_for": "Prescribed for (condition)",
+          "dosage": "Dosage summary (e.g. 2 tablets twice a day)"
+        }
+      },
+      "remove_medication": {
+        "title": "Remove medication detail",
+        "data": {
+          "remove": "Medications to clear detail for"
         }
       },
       "settings": {

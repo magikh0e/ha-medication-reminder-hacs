@@ -23,6 +23,7 @@
   },
   "options": {
     "abort": {
+      "no_doses": "Add a dose first. There are no doses to edit yet.",
       "no_medications": "Add a dose first. Medication detail attaches to a medication already used in one of this patient's doses."
     },
     "step": {
@@ -30,6 +31,7 @@
         "title": "Manage doses",
         "menu_options": {
           "add_dose": "Add a dose",
+          "edit_dose": "Edit a dose",
           "remove_dose": "Remove a dose",
           "add_supply": "Track a medication supply",
           "remove_supply": "Remove a tracked supply",
@@ -41,6 +43,33 @@
       "add_dose": {
         "title": "Add a dose",
         "description": "Pick the time and list the medications, then choose how it repeats: on chosen days of the week (all days = daily), every N days, or an on/off cycle, from a start date.",
+        "data": {
+          "time": "Time",
+          "meds": "Medications",
+          "schedule_type": "Repeat",
+          "days": "Days of the week (for the weekly option)",
+          "interval_days": "Every N days (for the interval option)",
+          "cycle_on": "Days on (for the on/off cycle)",
+          "cycle_off": "Days off (for the on/off cycle)",
+          "anchor_date": "Start date (for the interval or cycle option)",
+          "min_interval_hours": "Minimum hours between doses (as-needed only; 0 = no limit)",
+          "max_per_day": "Max doses per day (as-needed only; 0 = no limit)"
+        },
+        "data_description": {
+          "meds": "Separate multiple medications with &, +, or a comma. A slash only splits with spaces around it, so a name like 'Carbimazol 5mg (1/2)' stays whole.",
+          "min_interval_hours": "For an as-needed medication, warn (never block) when it is logged again sooner than this many hours, e.g. a pain med no less than 4 hours apart.",
+          "max_per_day": "For an as-needed medication, warn once this many doses have been logged today."
+        }
+      },
+      "edit_dose": {
+        "title": "Edit a dose",
+        "data": {
+          "dose": "Dose to edit"
+        }
+      },
+      "edit_dose_details": {
+        "title": "Edit dose",
+        "description": "Change this dose and save to replace it. Editing only the schedule keeps the same entity; changing the time or medications starts a fresh entity (its history resets).",
         "data": {
           "time": "Time",
           "meds": "Medications",

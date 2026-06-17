@@ -5,6 +5,10 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.0] - 2026-06-16
+### Added
+- Edit a dose in place. **Configure** has a new **Edit a dose** step: pick a dose, change anything on a form pre-filled with its current values, and save to replace it (no remove-and-re-add, no retyping). Editing only the schedule keeps the same entity and its history; changing the time or medications starts a fresh entity, and the old one is pruned so it does not linger as unavailable. (Requested by GitHub user weswark.)
+
 ## [0.20.2] - 2026-06-16
 ### Fixed
 - A dose marked given could revert to "not given" after an ungraceful Home Assistant shutdown (crash, OOM-kill, power loss, hard reboot) shortly after it was marked, a double-dose risk. The give-time was only flushed to disk by Home Assistant's periodic restore dump (about every 15 minutes) and on a graceful stop. It is now written to a dedicated store on every mark, un-mark, and daily reset, so the given state survives ungraceful shutdowns too. Doses already marked given are migrated to the store on upgrade, and the store is removed when a patient is deleted.

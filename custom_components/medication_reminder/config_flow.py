@@ -8,8 +8,12 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv, selector
-from homeassistant.util import dt as dt_util
+from homeassistant.helpers import (
+    config_validation as cv,
+    entity_registry as er,
+    selector,
+)
+from homeassistant.util import dt as dt_util, slugify
 
 from .const import (
     CONF_ANCHOR_DATE,
@@ -292,6 +296,7 @@ class MedicationReminderOptionsFlow(config_entries.OptionsFlow):
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         self._entry = config_entry
+        self._edit_index: int | None = None
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -300,6 +305,7 @@ class MedicationReminderOptionsFlow(config_entries.OptionsFlow):
             step_id="init",
             menu_options=[
                 "add_dose",
+                "edit_dose",
                 "remove_dose",
                 "add_supply",
                 "remove_supply",
@@ -323,88 +329,118 @@ class MedicationReminderOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             options = dict(self._entry.options)
             doses = list(options.get(CONF_DOSES, []))
-            stype = user_input.get(CONF_SCHEDULE_TYPE, DEFAULT_SCHEDULE_TYPE)
-            dose = {
-                CONF_TIME: str(user_input[CONF_TIME])[:5],
-                CONF_MEDS: user_input[CONF_MEDS],
-                CONF_SCHEDULE_TYPE: stype,
-            }
-            if stype == SCHEDULE_INTERVAL:
-                dose[CONF_INTERVAL_DAYS] = int(
-                    user_input.get(CONF_INTERVAL_DAYS, DEFAULT_INTERVAL_DAYS)
-                )
-                dose[CONF_ANCHOR_DATE] = str(
-                    user_input.get(CONF_ANCHOR_DATE)
-                    or dt_util.now().date().isoformat()
-                )[:10]
-                dose[CONF_DAYS] = list(DEFAULT_DAYS)
-            elif stype == SCHEDULE_CYCLE:
-                dose[CONF_CYCLE_ON] = int(
-                    user_input.get(CONF_CYCLE_ON, DEFAULT_CYCLE_ON)
-                )
-                dose[CONF_CYCLE_OFF] = int(
-                    user_input.get(CONF_CYCLE_OFF, DEFAULT_CYCLE_OFF)
-                )
-                dose[CONF_ANCHOR_DATE] = str(
-                    user_input.get(CONF_ANCHOR_DATE)
-                    or dt_util.now().date().isoformat()
-                )[:10]
-                dose[CONF_DAYS] = list(DEFAULT_DAYS)
-            elif stype == SCHEDULE_MONTHLY:
-                dose[CONF_MONTH_DAYS] = [
-                    int(d)
-                    for d in (user_input.get(CONF_MONTH_DAYS) or DEFAULT_MONTH_DAYS)
-                ]
-                dose[CONF_DAYS] = list(DEFAULT_DAYS)
-            elif stype == SCHEDULE_PRN:
-                # As needed: no schedule fields. days are ignored by is_due()
-                # for PRN, but keep the key present for a uniform dose shape.
-                # The over-dose guard (min interval / max per day) applies here.
-                dose[CONF_DAYS] = list(DEFAULT_DAYS)
-                dose[CONF_MIN_INTERVAL_HOURS] = float(
-                    user_input.get(CONF_MIN_INTERVAL_HOURS, DEFAULT_MIN_INTERVAL_HOURS)
-                )
-                dose[CONF_MAX_PER_DAY] = int(
-                    user_input.get(CONF_MAX_PER_DAY, DEFAULT_MAX_PER_DAY)
-                )
-            else:
-                dose[CONF_DAYS] = user_input.get(CONF_DAYS) or list(DEFAULT_DAYS)
-            doses.append(dose)
+            doses.append(self._dose_from_input(user_input))
             options[CONF_DOSES] = doses
             return self.async_create_entry(title="", data=options)
-        schema = vol.Schema(
+        return self.async_show_form(
+            step_id="add_dose", data_schema=self._dose_schema({})
+        )
+
+    @staticmethod
+    def _dose_from_input(user_input: dict[str, Any]) -> dict[str, Any]:
+        """Build a dose record from the add/edit form input. Fields for schedule
+        types other than the chosen one are ignored."""
+        stype = user_input.get(CONF_SCHEDULE_TYPE, DEFAULT_SCHEDULE_TYPE)
+        dose = {
+            CONF_TIME: str(user_input[CONF_TIME])[:5],
+            CONF_MEDS: user_input[CONF_MEDS],
+            CONF_SCHEDULE_TYPE: stype,
+        }
+        if stype == SCHEDULE_INTERVAL:
+            dose[CONF_INTERVAL_DAYS] = int(
+                user_input.get(CONF_INTERVAL_DAYS, DEFAULT_INTERVAL_DAYS)
+            )
+            dose[CONF_ANCHOR_DATE] = str(
+                user_input.get(CONF_ANCHOR_DATE) or dt_util.now().date().isoformat()
+            )[:10]
+            dose[CONF_DAYS] = list(DEFAULT_DAYS)
+        elif stype == SCHEDULE_CYCLE:
+            dose[CONF_CYCLE_ON] = int(user_input.get(CONF_CYCLE_ON, DEFAULT_CYCLE_ON))
+            dose[CONF_CYCLE_OFF] = int(
+                user_input.get(CONF_CYCLE_OFF, DEFAULT_CYCLE_OFF)
+            )
+            dose[CONF_ANCHOR_DATE] = str(
+                user_input.get(CONF_ANCHOR_DATE) or dt_util.now().date().isoformat()
+            )[:10]
+            dose[CONF_DAYS] = list(DEFAULT_DAYS)
+        elif stype == SCHEDULE_MONTHLY:
+            dose[CONF_MONTH_DAYS] = [
+                int(d) for d in (user_input.get(CONF_MONTH_DAYS) or DEFAULT_MONTH_DAYS)
+            ]
+            dose[CONF_DAYS] = list(DEFAULT_DAYS)
+        elif stype == SCHEDULE_PRN:
+            # As needed: no schedule fields. days are ignored by is_due() for PRN,
+            # but keep the key present for a uniform dose shape. The over-dose
+            # guard (min interval / max per day) applies here.
+            dose[CONF_DAYS] = list(DEFAULT_DAYS)
+            dose[CONF_MIN_INTERVAL_HOURS] = float(
+                user_input.get(CONF_MIN_INTERVAL_HOURS, DEFAULT_MIN_INTERVAL_HOURS)
+            )
+            dose[CONF_MAX_PER_DAY] = int(
+                user_input.get(CONF_MAX_PER_DAY, DEFAULT_MAX_PER_DAY)
+            )
+        else:
+            dose[CONF_DAYS] = user_input.get(CONF_DAYS) or list(DEFAULT_DAYS)
+        return dose
+
+    def _dose_schema(self, d: dict[str, Any]) -> vol.Schema:
+        """The add/edit dose form, pre-filled from dose d (empty d = defaults)."""
+
+        def _val(key: str, fallback: Any) -> Any:
+            v = d.get(key)
+            return fallback if v is None else v
+
+        time_marker = (
+            vol.Required(CONF_TIME, default=str(d[CONF_TIME])[:5])
+            if d.get(CONF_TIME)
+            else vol.Required(CONF_TIME)
+        )
+        meds_marker = (
+            vol.Required(CONF_MEDS, default=d[CONF_MEDS])
+            if d.get(CONF_MEDS)
+            else vol.Required(CONF_MEDS)
+        )
+        return vol.Schema(
             {
-                vol.Required(CONF_TIME): selector.TimeSelector(),
-                vol.Required(CONF_MEDS): selector.TextSelector(),
+                time_marker: selector.TimeSelector(),
+                meds_marker: selector.TextSelector(),
                 vol.Required(
-                    CONF_SCHEDULE_TYPE, default=DEFAULT_SCHEDULE_TYPE
+                    CONF_SCHEDULE_TYPE,
+                    default=_val(CONF_SCHEDULE_TYPE, DEFAULT_SCHEDULE_TYPE),
                 ): _schedule_type_selector(),
-                vol.Required(CONF_DAYS, default=list(DEFAULT_DAYS)): _days_selector(),
+                vol.Required(
+                    CONF_DAYS, default=list(_val(CONF_DAYS, DEFAULT_DAYS))
+                ): _days_selector(),
                 vol.Optional(
-                    CONF_INTERVAL_DAYS, default=DEFAULT_INTERVAL_DAYS
+                    CONF_INTERVAL_DAYS,
+                    default=int(_val(CONF_INTERVAL_DAYS, DEFAULT_INTERVAL_DAYS)),
                 ): _interval_selector(),
                 vol.Optional(
-                    CONF_CYCLE_ON, default=DEFAULT_CYCLE_ON
+                    CONF_CYCLE_ON, default=int(_val(CONF_CYCLE_ON, DEFAULT_CYCLE_ON))
                 ): _cycle_selector(1),
                 vol.Optional(
-                    CONF_CYCLE_OFF, default=DEFAULT_CYCLE_OFF
+                    CONF_CYCLE_OFF, default=int(_val(CONF_CYCLE_OFF, DEFAULT_CYCLE_OFF))
                 ): _cycle_selector(0),
                 vol.Optional(
-                    CONF_ANCHOR_DATE, default=dt_util.now().date().isoformat()
+                    CONF_ANCHOR_DATE,
+                    default=d.get(CONF_ANCHOR_DATE) or dt_util.now().date().isoformat(),
                 ): selector.DateSelector(),
                 vol.Optional(
                     CONF_MONTH_DAYS,
-                    default=[str(d) for d in DEFAULT_MONTH_DAYS],
+                    default=[str(x) for x in _val(CONF_MONTH_DAYS, DEFAULT_MONTH_DAYS)],
                 ): _month_days_selector(),
                 vol.Optional(
-                    CONF_MIN_INTERVAL_HOURS, default=DEFAULT_MIN_INTERVAL_HOURS
+                    CONF_MIN_INTERVAL_HOURS,
+                    default=float(
+                        _val(CONF_MIN_INTERVAL_HOURS, DEFAULT_MIN_INTERVAL_HOURS)
+                    ),
                 ): _min_interval_selector(),
                 vol.Optional(
-                    CONF_MAX_PER_DAY, default=DEFAULT_MAX_PER_DAY
+                    CONF_MAX_PER_DAY,
+                    default=int(_val(CONF_MAX_PER_DAY, DEFAULT_MAX_PER_DAY)),
                 ): _max_per_day_selector(),
             }
         )
-        return self.async_show_form(step_id="add_dose", data_schema=schema)
 
     async def async_step_remove_dose(
         self, user_input: dict[str, Any] | None = None
@@ -425,6 +461,71 @@ class MedicationReminderOptionsFlow(config_entries.OptionsFlow):
             {vol.Optional("remove", default=[]): cv.multi_select(choices)}
         )
         return self.async_show_form(step_id="remove_dose", data_schema=schema)
+
+    async def async_step_edit_dose(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Pick a dose to edit; its current values pre-fill the next step."""
+        doses = list(self._entry.options.get(CONF_DOSES, []))
+        if not doses:
+            return self.async_abort(reason="no_doses")
+        if user_input is not None:
+            self._edit_index = int(user_input["dose"])
+            return await self.async_step_edit_dose_details()
+        options = [
+            {"value": str(i), "label": f"{d[CONF_TIME]} - {d[CONF_MEDS]}"}
+            for i, d in enumerate(doses)
+        ]
+        schema = vol.Schema(
+            {
+                vol.Required("dose"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=options,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                )
+            }
+        )
+        return self.async_show_form(step_id="edit_dose", data_schema=schema)
+
+    async def async_step_edit_dose_details(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """The pre-filled dose form; saving replaces the selected dose in place.
+
+        Editing only the schedule keeps the same entity (its id is the time plus
+        medications). Changing the time or medications is a new entity, so the
+        old one is pruned to avoid leaving it unavailable.
+        """
+        doses = list(self._entry.options.get(CONF_DOSES, []))
+        idx = self._edit_index
+        if idx is None or idx >= len(doses):
+            return self.async_abort(reason="no_doses")
+        current = doses[idx]
+        if user_input is not None:
+            new_dose = self._dose_from_input(user_input)
+            if new_dose[CONF_TIME] != str(current.get(CONF_TIME, ""))[:5] or new_dose[
+                CONF_MEDS
+            ] != current.get(CONF_MEDS):
+                self._prune_dose_entity(current)
+            doses[idx] = new_dose
+            options = dict(self._entry.options)
+            options[CONF_DOSES] = doses
+            return self.async_create_entry(title="", data=options)
+        return self.async_show_form(
+            step_id="edit_dose_details", data_schema=self._dose_schema(current)
+        )
+
+    def _prune_dose_entity(self, dose: dict[str, Any]) -> None:
+        """Remove a dose's switch entity from the registry (used when an edit
+        changes the time/medications, so the old entity does not linger)."""
+        time = str(dose.get(CONF_TIME, ""))[:5]
+        meds = str(dose.get(CONF_MEDS, ""))
+        unique_id = f"{self._entry.entry_id}_{slugify(time + '_' + meds)}"
+        registry = er.async_get(self.hass)
+        entity_id = registry.async_get_entity_id("switch", DOMAIN, unique_id)
+        if entity_id:
+            registry.async_remove(entity_id)
 
     def _dose_medications(self) -> list[str]:
         """Distinct medications used across this patient's doses, sorted."""

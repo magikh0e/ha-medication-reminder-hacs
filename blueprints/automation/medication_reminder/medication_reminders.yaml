@@ -56,7 +56,7 @@ action:
             nag_minutes: "{{ state_attr(ent, 'nag_minutes') | int(45) }}"
             nag_interval: "{{ state_attr(ent, 'nag_interval') | int(15) }}"
             mins_since: "{{ (now() - today_at(dtime)).total_seconds() / 60 }}"
-            clock: "{{ (as_timestamp(today_at(dtime)) | timestamp_custom('%I:%M %p')).lstrip('0') }}"
+            clock: "{{ (as_timestamp(today_at(dtime)) | timestamp_custom('%H:%M')) if state_attr(ent, 'time_format') == '24h' else (as_timestamp(today_at(dtime)) | timestamp_custom('%I:%M %p')).lstrip('0') }}"
         - choose:
             # Reminder: scheduled today, within the nag window, not given.
             - conditions:

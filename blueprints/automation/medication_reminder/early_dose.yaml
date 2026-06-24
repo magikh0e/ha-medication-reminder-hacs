@@ -54,7 +54,7 @@ action:
               meds: "{{ trigger.event.data.medications }}"
               mins_early: "{{ trigger.event.data.minutes_early }}"
               notify_service: "{{ trigger.event.data.notify_service or default_notify }}"
-              clock: "{{ (as_timestamp(today_at(trigger.event.data.dose_time)) | timestamp_custom('%I:%M %p')).lstrip('0') }}"
+              clock: "{{ (as_timestamp(today_at(trigger.event.data.dose_time)) | timestamp_custom('%H:%M')) if state_attr(trigger.event.data.entity_id, 'time_format') == '24h' else (as_timestamp(today_at(trigger.event.data.dose_time)) | timestamp_custom('%I:%M %p')).lstrip('0') }}"
           - action: "notify.{{ notify_service }}"
             data:
               title: "⚠️ Given early: {{ patient }}"

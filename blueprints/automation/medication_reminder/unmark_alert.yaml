@@ -30,7 +30,7 @@ variables:
   notify_service: "{{ state_attr(ent, 'notify_service') or default_notify }}"
   dtime: "{{ state_attr(ent, 'dose_time') }}"
   stype: "{{ state_attr(ent, 'schedule_type') }}"
-  clock: "{{ (as_timestamp(today_at(dtime)) | timestamp_custom('%I:%M %p')).lstrip('0') if (dtime and stype != 'prn') else '' }}"
+  clock: "{{ ((as_timestamp(today_at(dtime)) | timestamp_custom('%H:%M')) if state_attr(ent, 'time_format') == '24h' else (as_timestamp(today_at(dtime)) | timestamp_custom('%I:%M %p')).lstrip('0')) if (dtime and stype != 'prn') else '' }}"
 action:
   - action: "notify.{{ notify_service }}"
     data:

@@ -44,7 +44,7 @@
               nag_minutes: "{{ state_attr(ent, 'nag_minutes') | int(45) }}"
               nag_interval: "{{ state_attr(ent, 'nag_interval') | int(15) }}"
               mins_since: "{{ (now() - today_at(dtime)).total_seconds() / 60 }}"
-              clock: "{{ (as_timestamp(today_at(dtime)) | timestamp_custom('%I:%M %p')).lstrip('0') }}"
+              clock: "{{ (as_timestamp(today_at(dtime)) | timestamp_custom('%H:%M')) if state_attr(ent, 'time_format') == '24h' else (as_timestamp(today_at(dtime)) | timestamp_custom('%I:%M %p')).lstrip('0') }}"
           - choose:
               # Reminder: only if scheduled today, within the nag window, not given
               - conditions:
@@ -177,7 +177,7 @@
                 meds: "{{ trigger.event.data.medications }}"
                 mins_early: "{{ trigger.event.data.minutes_early }}"
                 notify_service: "{{ trigger.event.data.notify_service or default_notify }}"
-                clock: "{{ (as_timestamp(today_at(trigger.event.data.dose_time)) | timestamp_custom('%I:%M %p')).lstrip('0') }}"
+                clock: "{{ (as_timestamp(today_at(trigger.event.data.dose_time)) | timestamp_custom('%H:%M')) if state_attr(trigger.event.data.entity_id, 'time_format') == '24h' else (as_timestamp(today_at(trigger.event.data.dose_time)) | timestamp_custom('%I:%M %p')).lstrip('0') }}"
             - action: "notify.{{ notify_service }}"
               data:
                 title: "⚠️ Given early: {{ patient }}"
@@ -242,7 +242,7 @@
     notify_service: "{{ state_attr(ent, 'notify_service') or default_notify }}"
     dtime: "{{ state_attr(ent, 'dose_time') }}"
     stype: "{{ state_attr(ent, 'schedule_type') }}"
-    clock: "{{ (as_timestamp(today_at(dtime)) | timestamp_custom('%I:%M %p')).lstrip('0') if (dtime and stype != 'prn') else '' }}"
+    clock: "{{ ((as_timestamp(today_at(dtime)) | timestamp_custom('%H:%M')) if state_attr(ent, 'time_format') == '24h' else (as_timestamp(today_at(dtime)) | timestamp_custom('%I:%M %p')).lstrip('0')) if (dtime and stype != 'prn') else '' }}"
   action:
     - action: "notify.{{ notify_service }}"
       data:

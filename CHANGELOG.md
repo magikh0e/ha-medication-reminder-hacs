@@ -5,6 +5,10 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.2] - 2026-06-23
+### Fixed
+- Reminder notifications now follow the patient's 12-hour / 24-hour time-format setting. The reminder, missed-dose, early-dose, and un-mark alerts previously always showed 12-hour time (e.g. "6:00 PM") even when the patient was set to 24-hour, so the text now matches the dose entities and dashboard. Re-import the blueprints to pick this up.
+
 ## [0.23.1] - 2026-06-17
 ### Fixed
 - Two doses with the same time and the same medications no longer silently collide into one switch entity. The Add and Edit dose steps now reject a duplicate time + medication with a clear error (the dose's entity id is its time plus medications, so a duplicate would have dropped one of them).

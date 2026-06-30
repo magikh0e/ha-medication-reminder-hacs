@@ -365,7 +365,8 @@ as switch attributes that the companion automations read.
 Optionally track how much of each medication you have on hand. In **Configure,
 Track a medication supply**, pick the medication from your doses, then set units
 on hand, units consumed per dose, a low-stock threshold, and a refill amount.
-Each tracked medication then gets:
+Change those later with **Edit a supply** in the same menu. Each tracked
+medication then gets:
 
 - `number.<patient>_<med>_supply` - units on hand, settable. It **decrements when
   a dose containing that medication is marked given** (once per dose per day,

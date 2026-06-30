@@ -25,10 +25,12 @@
     "abort": {
       "no_doses": "Add a dose first. There are no doses to edit yet.",
       "no_medications": "Add a dose first. Medication detail attaches to a medication already used in one of this patient's doses.",
-      "no_medication_detail": "Add medication detail first. There is nothing to edit yet."
+      "no_medication_detail": "Add medication detail first. There is nothing to edit yet.",
+      "no_supplies": "Track a supply first. There is nothing to edit yet."
     },
     "error": {
-      "duplicate_dose": "A dose with this time and these medications already exists. Use a different time, or combine them into one dose."
+      "duplicate_dose": "A dose with this time and these medications already exists. Use a different time, or combine them into one dose.",
+      "supply_exists": "This medication already has a tracked supply. Use Edit a supply to change it."
     },
     "step": {
       "init": {
@@ -52,6 +54,7 @@
         "title": "Supplies",
         "menu_options": {
           "add_supply": "Track a supply",
+          "edit_supply": "Edit a supply",
           "remove_supply": "Remove a supply"
         }
       },
@@ -122,6 +125,22 @@
         "description": "Count how much of a medication is on hand. It decrements each time a dose containing this medication is marked given, flags low at your threshold, and estimates a run-out date from the schedule. Pick the medication from your doses.",
         "data": {
           "supply_med": "Medication name",
+          "supply_units": "Units on hand now",
+          "supply_per_dose": "Units consumed per dose",
+          "supply_threshold": "Low-stock threshold",
+          "supply_refill_to": "Refill amount (a full supply)"
+        }
+      },
+      "edit_supply": {
+        "title": "Edit a supply",
+        "data": {
+          "supply_med": "Medication"
+        }
+      },
+      "edit_supply_details": {
+        "title": "Edit {medication} supply",
+        "description": "Update the tracked supply for {medication}.",
+        "data": {
           "supply_units": "Units on hand now",
           "supply_per_dose": "Units consumed per dose",
           "supply_threshold": "Low-stock threshold",

@@ -298,6 +298,7 @@ class MedicationReminderOptionsFlow(config_entries.OptionsFlow):
         self._entry = config_entry
         self._edit_index: int | None = None
         self._edit_med_name: str | None = None
+        self._edit_supply_med: str | None = None
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -321,7 +322,7 @@ class MedicationReminderOptionsFlow(config_entries.OptionsFlow):
     ) -> config_entries.ConfigFlowResult:
         return self.async_show_menu(
             step_id="supplies",
-            menu_options=["add_supply", "remove_supply"],
+            menu_options=["add_supply", "edit_supply", "remove_supply"],
         )
 
     async def async_step_med_details(
@@ -584,49 +585,153 @@ class MedicationReminderOptionsFlow(config_entries.OptionsFlow):
     async def async_step_add_supply(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Track supply for one medication: units on hand, per-dose, threshold."""
-        # Supply attaches to a medication from the doses, so it always matches
-        # one and decrements (no free-typed name that would never decrement).
+        """Track supply for one medication: units on hand, per-dose, threshold.
+
+        The medication is chosen from the doses, so the supply always matches a
+        dose and decrements. Adding one for a medication that is already tracked
+        is rejected (use Edit a supply) because two would collide on the same
+        supply entity.
+        """
         med_names = self._dose_medications()
         if not med_names:
             return self.async_abort(reason="no_medications")
         if user_input is not None:
-            options = dict(self._entry.options)
-            supplies = list(options.get(CONF_SUPPLIES, []))
-            supplies.append(
-                {
-                    CONF_SUPPLY_MED: user_input[CONF_SUPPLY_MED].strip(),
-                    CONF_SUPPLY_UNITS: int(user_input[CONF_SUPPLY_UNITS]),
-                    CONF_SUPPLY_PER_DOSE: int(user_input[CONF_SUPPLY_PER_DOSE]),
-                    CONF_SUPPLY_THRESHOLD: int(user_input[CONF_SUPPLY_THRESHOLD]),
-                    CONF_SUPPLY_REFILL_TO: int(user_input[CONF_SUPPLY_REFILL_TO]),
-                }
-            )
-            options[CONF_SUPPLIES] = supplies
-            return self.async_create_entry(title="", data=options)
+            med = str(user_input[CONF_SUPPLY_MED]).strip()
+            if med.lower() in {m.lower() for m in self._supply_meds()}:
+                return self.async_show_form(
+                    step_id="add_supply",
+                    data_schema=self._add_supply_schema(med_names, user_input),
+                    errors={"base": "supply_exists"},
+                )
+            return self._save_supply(med, self._supply_record(med, user_input))
+        return self.async_show_form(
+            step_id="add_supply", data_schema=self._add_supply_schema(med_names, {})
+        )
+
+    async def async_step_edit_supply(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Pick a tracked medication; its supply pre-fills the next step."""
+        meds = self._supply_meds()
+        if not meds:
+            return self.async_abort(reason="no_supplies")
+        if user_input is not None:
+            self._edit_supply_med = str(user_input[CONF_SUPPLY_MED])
+            return await self.async_step_edit_supply_details()
         schema = vol.Schema(
             {
                 vol.Required(CONF_SUPPLY_MED): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=sorted(set(meds)),
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                )
+            }
+        )
+        return self.async_show_form(step_id="edit_supply", data_schema=schema)
+
+    async def async_step_edit_supply_details(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """The pre-filled supply form for the chosen medication; saving updates it."""
+        med = self._edit_supply_med
+        record = (
+            next(
+                (
+                    s
+                    for s in self._entry.options.get(CONF_SUPPLIES, [])
+                    if str(s.get(CONF_SUPPLY_MED, "")).strip().lower()
+                    == str(med).strip().lower()
+                ),
+                None,
+            )
+            if med
+            else None
+        )
+        if record is None:
+            return self.async_abort(reason="no_supplies")
+        if user_input is not None:
+            return self._save_supply(
+                str(med).strip(), self._supply_record(str(med).strip(), user_input)
+            )
+        return self.async_show_form(
+            step_id="edit_supply_details",
+            data_schema=vol.Schema(self._supply_fields(record)),
+            description_placeholders={"medication": str(med)},
+        )
+
+    def _supply_meds(self) -> list[str]:
+        """Medications that currently have a tracked supply."""
+        return [
+            str(s.get(CONF_SUPPLY_MED, "")).strip()
+            for s in self._entry.options.get(CONF_SUPPLIES, [])
+            if str(s.get(CONF_SUPPLY_MED, "")).strip()
+        ]
+
+    @staticmethod
+    def _supply_record(med: str, user_input: dict[str, Any]) -> dict[str, Any]:
+        """A supply record from form input, keyed by medication."""
+        return {
+            CONF_SUPPLY_MED: med,
+            CONF_SUPPLY_UNITS: int(user_input[CONF_SUPPLY_UNITS]),
+            CONF_SUPPLY_PER_DOSE: int(user_input[CONF_SUPPLY_PER_DOSE]),
+            CONF_SUPPLY_THRESHOLD: int(user_input[CONF_SUPPLY_THRESHOLD]),
+            CONF_SUPPLY_REFILL_TO: int(user_input[CONF_SUPPLY_REFILL_TO]),
+        }
+
+    def _save_supply(
+        self, med: str, record: dict[str, Any]
+    ) -> config_entries.ConfigFlowResult:
+        """Upsert a supply record (replace any with the same medication)."""
+        options = dict(self._entry.options)
+        supplies = [
+            s
+            for s in options.get(CONF_SUPPLIES, [])
+            if str(s.get(CONF_SUPPLY_MED, "")).strip().lower() != med.lower()
+        ]
+        supplies.append(record)
+        options[CONF_SUPPLIES] = supplies
+        return self.async_create_entry(title="", data=options)
+
+    def _supply_fields(self, s: dict[str, Any]) -> dict[Any, Any]:
+        """The supply count fields, pre-filled from record s (empty s = defaults)."""
+        return {
+            vol.Required(
+                CONF_SUPPLY_UNITS,
+                default=int(s.get(CONF_SUPPLY_UNITS, DEFAULT_SUPPLY_UNITS)),
+            ): _count_selector(),
+            vol.Required(
+                CONF_SUPPLY_PER_DOSE,
+                default=int(s.get(CONF_SUPPLY_PER_DOSE, DEFAULT_SUPPLY_PER_DOSE)),
+            ): _count_selector(),
+            vol.Required(
+                CONF_SUPPLY_THRESHOLD,
+                default=int(s.get(CONF_SUPPLY_THRESHOLD, DEFAULT_SUPPLY_THRESHOLD)),
+            ): _count_selector(),
+            vol.Required(
+                CONF_SUPPLY_REFILL_TO,
+                default=int(s.get(CONF_SUPPLY_REFILL_TO, DEFAULT_SUPPLY_REFILL_TO)),
+            ): _count_selector(),
+        }
+
+    def _add_supply_schema(self, med_names: list[str], d: dict[str, Any]) -> vol.Schema:
+        """The Track-a-supply form: a medication dropdown plus the count fields."""
+        med_marker = (
+            vol.Required(CONF_SUPPLY_MED, default=d[CONF_SUPPLY_MED])
+            if d.get(CONF_SUPPLY_MED)
+            else vol.Required(CONF_SUPPLY_MED)
+        )
+        return vol.Schema(
+            {
+                med_marker: selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=med_names,
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
                 ),
-                vol.Required(
-                    CONF_SUPPLY_UNITS, default=DEFAULT_SUPPLY_UNITS
-                ): _count_selector(),
-                vol.Required(
-                    CONF_SUPPLY_PER_DOSE, default=DEFAULT_SUPPLY_PER_DOSE
-                ): _count_selector(),
-                vol.Required(
-                    CONF_SUPPLY_THRESHOLD, default=DEFAULT_SUPPLY_THRESHOLD
-                ): _count_selector(),
-                vol.Required(
-                    CONF_SUPPLY_REFILL_TO, default=DEFAULT_SUPPLY_REFILL_TO
-                ): _count_selector(),
+                **self._supply_fields(d),
             }
         )
-        return self.async_show_form(step_id="add_supply", data_schema=schema)
 
     async def async_step_remove_supply(
         self, user_input: dict[str, Any] | None = None

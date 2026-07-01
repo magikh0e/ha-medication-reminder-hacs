@@ -5,6 +5,10 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.1] - 2026-06-30
+### Added
+- German translation, contributed by @RookieIVG (#10), and Dutch translation, contributed by @VGrol (#11). Home Assistant loads the matching locale automatically.
+
 ## [0.24.0] - 2026-06-23
 ### Fixed
 - Tracked supplies can now be edited. "Track a supply" was add-only, and because a config-flow form cannot change its other fields when you pick a medication from the dropdown, choosing a med never loaded its current units / threshold, and re-saving an already-tracked med silently collided on the same supply entity (so the numbers appeared not to change). **Configure, Supplies** now has an **Edit a supply** step that pre-fills the chosen medication's current units, per-dose, threshold, and refill amount so you can change them, and **Track a supply** now rejects a medication that already has a supply (pointing you to Edit). Reported in #9.

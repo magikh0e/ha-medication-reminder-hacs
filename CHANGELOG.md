@@ -5,6 +5,13 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.25.0] - 2026-06-30
+### Added
+- Per-supply refill mode. A supply's refill button still defaults to setting the count to the configured refill amount, but you can now switch it to **Add on refill (package refill)**, which adds the refill amount to what is left (e.g. 17 + 30 = 47, capped at the max) instead of resetting. Set it per supply in **Configure, Supplies** under Track a supply or Edit a supply. Requested in a GitHub issue (#12).
+
+### Changed
+- Added a translation coverage check (a Translations CI job and `scripts/check_translations.py`) plus a contributor guide at `translations/README.md`, so it is easy to see which locales are missing keys after a release. Locales without a key fall back to English, so a gap never breaks anything.
+
 ## [0.24.1] - 2026-06-30
 ### Added
 - German translation, contributed by @RookieIVG (#10), and Dutch translation, contributed by @VGrol (#11). Home Assistant loads the matching locale automatically.

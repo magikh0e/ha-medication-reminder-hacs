@@ -43,6 +43,7 @@ from .const import (
     CONF_SUPPLIES,
     CONF_SUPPLY_MED,
     CONF_SUPPLY_PER_DOSE,
+    CONF_SUPPLY_REFILL_ADD,
     CONF_SUPPLY_REFILL_TO,
     CONF_SUPPLY_THRESHOLD,
     CONF_SUPPLY_UNITS,
@@ -61,6 +62,7 @@ from .const import (
     DEFAULT_RESET_TIME,
     DEFAULT_SCHEDULE_TYPE,
     DEFAULT_SUPPLY_PER_DOSE,
+    DEFAULT_SUPPLY_REFILL_ADD,
     DEFAULT_SUPPLY_REFILL_TO,
     DEFAULT_SUPPLY_THRESHOLD,
     DEFAULT_SUPPLY_UNITS,
@@ -677,6 +679,7 @@ class MedicationReminderOptionsFlow(config_entries.OptionsFlow):
             CONF_SUPPLY_PER_DOSE: int(user_input[CONF_SUPPLY_PER_DOSE]),
             CONF_SUPPLY_THRESHOLD: int(user_input[CONF_SUPPLY_THRESHOLD]),
             CONF_SUPPLY_REFILL_TO: int(user_input[CONF_SUPPLY_REFILL_TO]),
+            CONF_SUPPLY_REFILL_ADD: bool(user_input.get(CONF_SUPPLY_REFILL_ADD, False)),
         }
 
     def _save_supply(
@@ -712,6 +715,10 @@ class MedicationReminderOptionsFlow(config_entries.OptionsFlow):
                 CONF_SUPPLY_REFILL_TO,
                 default=int(s.get(CONF_SUPPLY_REFILL_TO, DEFAULT_SUPPLY_REFILL_TO)),
             ): _count_selector(),
+            vol.Required(
+                CONF_SUPPLY_REFILL_ADD,
+                default=bool(s.get(CONF_SUPPLY_REFILL_ADD, DEFAULT_SUPPLY_REFILL_ADD)),
+            ): selector.BooleanSelector(),
         }
 
     def _add_supply_schema(self, med_names: list[str], d: dict[str, Any]) -> vol.Schema:

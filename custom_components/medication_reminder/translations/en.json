@@ -128,7 +128,11 @@
           "supply_units": "Units on hand now",
           "supply_per_dose": "Units consumed per dose",
           "supply_threshold": "Low-stock threshold",
-          "supply_refill_to": "Refill amount (a full supply)"
+          "supply_refill_to": "Refill amount (a full supply)",
+          "supply_refill_add": "Add on refill (package refill)"
+        },
+        "data_description": {
+          "supply_refill_add": "On refill, add the refill amount to what is left (e.g. 17 + 30 = 47) instead of setting the count to the refill amount."
         }
       },
       "edit_supply": {
@@ -144,7 +148,11 @@
           "supply_units": "Units on hand now",
           "supply_per_dose": "Units consumed per dose",
           "supply_threshold": "Low-stock threshold",
-          "supply_refill_to": "Refill amount (a full supply)"
+          "supply_refill_to": "Refill amount (a full supply)",
+          "supply_refill_add": "Add on refill (package refill)"
+        },
+        "data_description": {
+          "supply_refill_add": "On refill, add the refill amount to what is left (e.g. 17 + 30 = 47) instead of setting the count to the refill amount."
         }
       },
       "remove_supply": {

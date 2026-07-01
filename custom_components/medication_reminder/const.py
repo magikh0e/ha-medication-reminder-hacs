@@ -50,6 +50,7 @@ CONF_SUPPLY_UNITS = "supply_units"
 CONF_SUPPLY_PER_DOSE = "supply_per_dose"
 CONF_SUPPLY_THRESHOLD = "supply_threshold"
 CONF_SUPPLY_REFILL_TO = "supply_refill_to"
+CONF_SUPPLY_REFILL_ADD = "supply_refill_add"
 
 # Per-medication reference detail (optional), kept separate from the short dose
 # name. Keyed by the medication name as it appears in a dose's meds string.
@@ -86,6 +87,7 @@ DEFAULT_SUPPLY_UNITS = 30
 DEFAULT_SUPPLY_PER_DOSE = 1
 DEFAULT_SUPPLY_THRESHOLD = 10
 DEFAULT_SUPPLY_REFILL_TO = 30
+DEFAULT_SUPPLY_REFILL_ADD = False
 
 # Icon for the patient-level "all doses given" sensor, by patient type.
 PATIENT_ICONS = {

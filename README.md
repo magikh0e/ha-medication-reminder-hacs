@@ -374,8 +374,10 @@ medication then gets:
   `est_runout_date`, computed from the schedule. Un-marking a dose (the early-dose
   "undo" or a manual toggle-off) adds the units back. Adjust it any time to
   correct a miscount or to refill.
-- `button.<patient>_<med>_refill` - a one-tap restock that sets the supply back to
-  its configured refill amount, instead of editing the number by hand. It fires a
+- `button.<patient>_<med>_refill` - a one-tap restock, instead of editing the
+  number by hand. By default it sets the supply to its configured refill amount;
+  turn on **Add on refill (package refill)** for that supply to instead add the
+  refill amount to what is left (e.g. 17 + 30 = 47), capped at the max. It fires a
   `medication_reminder_supply_refill` event that the supply number listens for.
 - `button.<patient>_log_<meds>_dose` - only created for **as-needed (PRN)** doses.
   Pressing it logs one dose and decrements the matching supply with **no

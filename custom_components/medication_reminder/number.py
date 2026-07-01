@@ -32,10 +32,12 @@ from .const import (
     CONF_SUPPLIES,
     CONF_SUPPLY_MED,
     CONF_SUPPLY_PER_DOSE,
+    CONF_SUPPLY_REFILL_ADD,
     CONF_SUPPLY_REFILL_TO,
     CONF_SUPPLY_THRESHOLD,
     CONF_SUPPLY_UNITS,
     DEFAULT_SUPPLY_PER_DOSE,
+    DEFAULT_SUPPLY_REFILL_ADD,
     DEFAULT_SUPPLY_REFILL_TO,
     DEFAULT_SUPPLY_THRESHOLD,
     DEFAULT_SUPPLY_UNITS,
@@ -87,6 +89,11 @@ class MedicationSupplyNumber(NumberEntity, RestoreEntity):
         self._refill_to = int(
             supply.get(CONF_SUPPLY_REFILL_TO, DEFAULT_SUPPLY_REFILL_TO)
         )
+        # Refill either sets the count to refill_to (default) or adds it
+        # (a "package refill" that keeps what is left).
+        self._refill_add = bool(
+            supply.get(CONF_SUPPLY_REFILL_ADD, DEFAULT_SUPPLY_REFILL_ADD)
+        )
         self._value = float(supply.get(CONF_SUPPLY_UNITS, DEFAULT_SUPPLY_UNITS))
         # dose entity_id -> calendar date already counted, to avoid double-count.
         self._consumed: dict[str, str] = {}
@@ -110,6 +117,7 @@ class MedicationSupplyNumber(NumberEntity, RestoreEntity):
             "per_dose": self._per_dose,
             "threshold": self._threshold,
             "refill_to": self._refill_to,
+            "refill_add": self._refill_add,
             "doses_left": self._doses_left(),
             "est_runout_date": self._est_runout_date(),
             "low": self._value <= self._threshold,
@@ -192,12 +200,19 @@ class MedicationSupplyNumber(NumberEntity, RestoreEntity):
 
     @callback
     def _on_refill(self, event: Event) -> None:
-        """Restock to the refill-to amount when this supply's button is pressed."""
+        """Restock when this supply's button is pressed. By default the count is
+        set to the refill amount; in add mode the refill amount is added to
+        what is left (a package refill), capped at the max."""
         if (
             event.data.get("patient") == self._patient
             and event.data.get("medication") == self._med
         ):
-            self._value = float(self._refill_to)
+            if self._refill_add:
+                self._value = min(
+                    self._attr_native_max_value, self._value + self._refill_to
+                )
+            else:
+                self._value = float(self._refill_to)
             self.async_write_ha_state()
 
     @callback
